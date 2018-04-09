@@ -1,103 +1,23 @@
-#ifdef WIN32
-#include <winsock2.h>
-#include <windows.h>
-#endif
-
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <errno.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <memory.h>
-#if !defined(__APPLE__) && !defined(__FreeBSD__)
 #include <malloc.h>
-#endif
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
 #include <time.h>
-#ifndef WIN32
 #include <regex.h>
-#endif
-#include "libcli.h"
+
+#include "base_def.h"
+#include "lib_cli.h"
 
 // vim:sw=4 tw=120 et
 
-#ifdef __GNUC__
-# define UNUSED(d) d __attribute__ ((unused))
-#else
-# define UNUSED(d) d
-#endif
-
 #define MATCH_REGEX     1
 #define MATCH_INVERT    2
-
-#ifdef WIN32
-/*
- * Stupid windows has multiple namespaces for filedescriptors, with different
- * read/write functions required for each ..
- */
-int read(int fd, void *buf, unsigned int count) {
-    return recv(fd, buf, count, 0);
-}
-
-int write(int fd, const void *buf, unsigned int count) {
-    return send(fd, buf, count, 0);
-}
-
-int vasprintf(char **strp, const char *fmt, va_list args) {
-    int size;
-
-    size = vsnprintf(NULL, 0, fmt, args);
-    if ((*strp = malloc(size + 1)) == NULL) {
-        return -1;
-    }
-
-    size = vsnprintf(*strp, size + 1, fmt, args);
-    return size;
-}
-
-int asprintf(char **strp, const char *fmt, ...) {
-    va_list args;
-    int size;
-
-    va_start(args, fmt);
-    size = vasprintf(strp, fmt, args);
-
-    va_end(args);
-    return size;
-}
-
-int fprintf(FILE *stream, const char *fmt, ...) {
-    va_list args;
-    int size;
-    char *buf;
-
-    va_start(args, fmt);
-    size = vasprintf(&buf, fmt, args);
-    if (size < 0) {
-        goto out;
-    }
-    size = write(stream->_file, buf, size);
-    free(buf);
-
-out:
-    va_end(args);
-    return size;
-}
-
-/*
- * Dummy definitions to allow compilation on Windows
- */
-int regex_dummy() {return 0;};
-#define regfree(...) regex_dummy()
-#define regexec(...) regex_dummy()
-#define regcomp(...) regex_dummy()
-#define regex_t int
-#define REG_NOSUB       0
-#define REG_EXTENDED    0
-#define REG_ICASE       0
-#endif
 
 enum cli_states {
     STATE_LOGIN,
@@ -533,10 +453,13 @@ int cli_int_exit(struct cli_def *cli, const char *command, char *argv[], int arg
     if (cli->mode == MODE_EXEC)
         return cli_int_quit(cli, command, argv, argc);
 
+#if 0
     if (cli->mode > MODE_CONFIG)
         cli_set_configmode(cli, MODE_CONFIG, NULL);
     else
-        cli_set_configmode(cli, MODE_EXEC, NULL);
+#endif
+
+    cli_set_configmode(cli, MODE_EXEC, NULL);
 
     cli->service = NULL;
     return CLI_OK;
@@ -557,7 +480,7 @@ int cli_int_configure_terminal(struct cli_def *cli, UNUSED(const char *command),
 struct cli_def *cli_init()
 {
     struct cli_def *cli;
-    struct cli_command *c;
+    //struct cli_command *c;
 
     if (!(cli = calloc(sizeof(struct cli_def), 1)))
         return 0;
@@ -572,10 +495,11 @@ struct cli_def *cli_init()
 
     cli_register_command(cli, 0, "help", cli_int_help, PRIVILEGE_UNPRIVILEGED, MODE_ANY, "Show available commands");
     cli_register_command(cli, 0, "quit", cli_int_quit, PRIVILEGE_UNPRIVILEGED, MODE_ANY, "Disconnect");
-    cli_register_command(cli, 0, "logout", cli_int_quit, PRIVILEGE_UNPRIVILEGED, MODE_ANY, "Disconnect");
+    //cli_register_command(cli, 0, "logout", cli_int_quit, PRIVILEGE_UNPRIVILEGED, MODE_ANY, "Disconnect");
     cli_register_command(cli, 0, "exit", cli_int_exit, PRIVILEGE_UNPRIVILEGED, MODE_ANY, "Exit from current mode");
     cli_register_command(cli, 0, "history", cli_int_history, PRIVILEGE_UNPRIVILEGED, MODE_ANY,
                          "Show a list of previously run commands");
+#if 0
     cli_register_command(cli, 0, "enable", cli_int_enable, PRIVILEGE_UNPRIVILEGED, MODE_EXEC,
                          "Turn on privileged commands");
     cli_register_command(cli, 0, "disable", cli_int_disable, PRIVILEGE_PRIVILEGED, MODE_EXEC,
@@ -584,6 +508,7 @@ struct cli_def *cli_init()
     c = cli_register_command(cli, 0, "configure", 0, PRIVILEGE_PRIVILEGED, MODE_EXEC, "Enter configuration mode");
     cli_register_command(cli, c, "terminal", cli_int_configure_terminal, PRIVILEGE_PRIVILEGED, MODE_EXEC,
                          "Configure from the terminal");
+#endif
 
     cli->privilege = cli->mode = -1;
     cli_set_privilege(cli, PRIVILEGE_UNPRIVILEGED);

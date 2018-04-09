@@ -1,32 +1,29 @@
 #include <stdio.h>
 #include <sys/types.h>
-#ifdef WIN32
-#include <winsock2.h>
-#include <windows.h>
-#else
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#endif
 #include <signal.h>
+#include <pthread.h>
 #include <strings.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "libcli.h"
 
-// vim:sw=4 tw=120 et
+#include "base_def.h"
+#include "lib_cli.h"
+#include "lib_misc.h"
+
+extern pthread_cond_t g_app_cond;
+extern pthread_mutex_t g_app_mutex;
+extern unsigned char *g_app_pkt;
+extern unsigned long g_app_pkt_len;
+extern unsigned long g_app_pkt_module;
+static unsigned char g_app_file_pkt[512];
 
 #define CLITEST_PORT                8000
 #define MODE_CONFIG_INT             10
-#define MODE_CONFIG_INTA            11
-#define MODE_CONFIG_INTB            12
-
-#ifdef __GNUC__
-# define UNUSED(d) d __attribute__ ((unused))
-#else
-# define UNUSED(d) d
-#endif
+#define MODE_CONFIG_WLOC            20
 
 unsigned int regular_count = 0;
 unsigned int debug_regular = 0;
@@ -35,41 +32,6 @@ struct my_context {
   int value;
   char* message;
 };
-
-#ifdef WIN32
-typedef int socklen_t;
-
-int winsock_init()
-{
-    WORD wVersionRequested;
-    WSADATA wsaData;
-    int err;
-
-    // Start up sockets
-    wVersionRequested = MAKEWORD(2, 2);
-
-    err = WSAStartup(wVersionRequested, &wsaData);
-    if (err != 0)
-    {
-        // Tell the user that we could not find a usable WinSock DLL.
-        return 0;
-    }
-
-    /*
-     * Confirm that the WinSock DLL supports 2.2
-     * Note that if the DLL supports versions greater than 2.2 in addition to
-     * 2.2, it will still return 2.2 in wVersion since that is the version we
-     * requested.
-     * */
-    if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2)
-    {
-        // Tell the user that we could not find a usable WinSock DLL.
-        WSACleanup();
-        return 0;
-    }
-    return 1;
-}
-#endif
 
 int cmd_test(struct cli_def *cli, const char *command, char *argv[], int argc)
 {
@@ -131,16 +93,135 @@ int cmd_config_int(struct cli_def *cli, UNUSED(const char *command), char *argv[
 
     if (strcmp(argv[0], "?") == 0)
         cli_print(cli, "  test0/0");
-
     else if (strcasecmp(argv[0], "test0/0") == 0)
         cli_set_configmode(cli, MODE_CONFIG_INT, "test");
-    else if (strcasecmp(argv[0], "test0/1") == 0)
-        cli_set_configmode(cli, MODE_CONFIG_INTA, "test");
-    else if (strcasecmp(argv[0], "test0/2") == 0)
-        cli_set_configmode(cli, MODE_CONFIG_INTB, "test");
     else
         cli_print(cli, "Unknown interface %s", argv[0]);
 
+    return CLI_OK;
+}
+
+int cmd_config_wloc(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
+{
+    cli_set_configmode(cli, MODE_CONFIG_WLOC, "wloc");
+    return CLI_OK;
+}
+
+struct pkt
+{
+    unsigned long module;
+    unsigned long len;
+    unsigned char data[128];
+};
+
+//static char pkt_file_path[] = "./doc/pkt";
+
+static struct pkt pkt_array[] = {
+    {0, 10, {1,2,3,4,5,6,7,8,9,10}},
+    {1, 15, {0x83,0x41,0x20,0xc7,0xdd,0x11,0x10,0x00,0x00,0x02,0x1,0x3,0x0,0xa,0x0}},
+    {2, 33, {
+    1,2,3,4,5,6,7,8,9,10,
+    1,2,3,4,5,6,7,8,9,10,
+    1,2,3,4,5,6,7,8,9,10,1,9,8
+    }},
+};
+
+int cmd_wloc_rcv_builtin_pkt(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
+{
+    unsigned long max = sizeof(pkt_array)/sizeof(struct pkt) - 1;
+    unsigned long num = -1;
+
+    if (argc != 1)
+    {
+        cli_print(cli, "packet num <0-%lu>", max);
+        return CLI_OK;
+    }
+
+    if (strcmp(argv[0], "?") == 0)
+        cli_print(cli, "packet num <0-%lu>", max);
+    else {
+        sscanf(argv[0], "%lu", &num);
+        if (num > max)
+            cli_print(cli, "something wrong with packet num");
+        else {
+            pthread_mutex_lock(&g_app_mutex);
+            g_app_pkt_len = pkt_array[num].len;
+            g_app_pkt_module = pkt_array[num].module;
+            g_app_pkt = pkt_array[num].data;
+            pthread_cond_signal(&g_app_cond);
+            pthread_mutex_unlock(&g_app_mutex);
+        }
+    }
+
+    return CLI_OK;
+}
+
+int cmd_wloc_rcv_file_pkt(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
+{
+    char *default_path = "./doc/one_pkt";
+    char *path = NULL;
+    int len;
+    FILE *fp;
+
+    if (argc >= 1 && strcmp(argv[0], "?") == 0) {
+        cli_print(cli, "packet file path /xx/yy/zz");
+        return CLI_OK;
+    }
+
+    if (argc != 1)
+    {
+        cli_print(cli, "use pkt file %s", default_path);
+        path = default_path;
+    } else
+        path = argv[0];
+
+    fp = fopen(path, "rb");
+    if (NULL == fp) {
+        cli_print(cli, "wrong path %s", path);
+        cli_print(cli, "packet file path /xx/yy/zz");
+        return CLI_OK;
+    }
+
+    memset(g_app_file_pkt, 0, sizeof(g_app_file_pkt));
+    len = fread(g_app_file_pkt, sizeof(char), sizeof(g_app_file_pkt), fp);
+    if (0 >= len) {
+        fclose(fp);
+        cli_print(cli, "packet file path /xx/yy/zz");
+        return CLI_OK;
+    }
+    pthread_mutex_lock(&g_app_mutex);
+    g_app_pkt_len = len;
+    g_app_pkt_module = 3;
+    g_app_pkt = g_app_file_pkt;
+    pthread_cond_signal(&g_app_cond);
+    pthread_mutex_unlock(&g_app_mutex);
+    fclose(fp);
+
+    return CLI_OK;
+}
+
+int cmd_wloc_rcv_cli_pkt(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
+{
+    int len;
+
+    if (argc != 1 || strcmp(argv[0], "?") == 0) {
+        cli_print(cli, "packet hex context");
+        return CLI_OK;
+    }
+
+    memset(g_app_file_pkt, 0, sizeof(g_app_file_pkt));
+    len = ch_to_hex(argv[0], g_app_file_pkt);
+    if (0 == len) {
+        cli_print(cli, "packet hex context");
+        return CLI_OK;
+    }
+
+    pthread_mutex_lock(&g_app_mutex);
+    g_app_pkt_len = len;
+    g_app_pkt_module = 4;
+    g_app_pkt = g_app_file_pkt;
+    pthread_cond_signal(&g_app_cond);
+    pthread_mutex_unlock(&g_app_mutex);
     return CLI_OK;
 }
 
@@ -206,7 +287,7 @@ void pc(UNUSED(struct cli_def *cli), const char *string)
     printf("%s\n", string);
 }
 
-int main()
+int cli_main()
 {
     struct cli_command *c;
     struct cli_def *cli;
@@ -214,29 +295,38 @@ int main()
     struct sockaddr_in addr;
     int on = 1;
 
-#ifndef WIN32
     signal(SIGCHLD, SIG_IGN);
-#endif
-#ifdef WIN32
-    if (!winsock_init()) {
-        printf("Error initialising winsock\n");
-        return 1;
-    }
-#endif
 
     // Prepare a small user context
+
+#if 0
     char mymessage[] = "I contain user data!";
     struct my_context myctx;
     myctx.value = 5;
     myctx.message = mymessage;
+#endif
 
     cli = cli_init();
-    cli_set_banner(cli, "libcli test environment");
-    cli_set_hostname(cli, "router");
+    cli_set_banner(cli, "edge compute environment");
+    cli_set_hostname(cli, "cli");
     cli_telnet_protocol(cli, 1);
+    cli_set_idle_timeout_callback(cli, 60, idle_timeout); 
+
+    cli_register_command(cli, NULL, "wloc", cmd_config_wloc, PRIVILEGE_UNPRIVILEGED, MODE_EXEC,
+                         "Configure wloc process");
+    c = cli_register_command(cli, NULL, "packet", NULL, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_WLOC, 
+                         "Send/Receive packet");
+    c = cli_register_command(cli, c, "recv", NULL, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_WLOC, 
+                         "Receive packet");
+    cli_register_command(cli, c, "built-in", cmd_wloc_rcv_builtin_pkt, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_WLOC, 
+                         "Receive built-in packets");
+    cli_register_command(cli, c, "file", cmd_wloc_rcv_file_pkt, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_WLOC, 
+                         "Receive packet file");
+    cli_register_command(cli, c, "cli", cmd_wloc_rcv_cli_pkt, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_WLOC, 
+                         "Receive packets from cli");
+#if 0
     cli_regular(cli, regular_callback);
     cli_regular_interval(cli, 5); // Defaults to 1 second
-    cli_set_idle_timeout_callback(cli, 60, idle_timeout); // 60 second idle timeout
     cli_register_command(cli, NULL, "test", cmd_test, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL);
 
     cli_register_command(cli, NULL, "simple", NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL);
@@ -290,6 +380,7 @@ int main()
             fclose(fh);
         }
     }
+#endif
 
     if ((s = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
@@ -314,10 +405,10 @@ int main()
         return 1;
     }
 
-    printf("Listening on port %d\n", CLITEST_PORT);
+    //printf("cli listening on port %d\n", CLITEST_PORT);
     while ((x = accept(s, NULL, 0)))
     {
-#ifndef WIN32
+#if 0
         int pid = fork();
         if (pid < 0)
         {
@@ -340,13 +431,12 @@ int main()
         close(s);
         cli_loop(cli, x);
         exit(0);
-#else
-        cli_loop(cli, x);
-        shutdown(x, SD_BOTH);
-        close(x);
 #endif
+        cli_loop(cli, x);
+        close(x);
     }
 
     cli_done(cli);
     return 0;
 }
+

@@ -3,6 +3,7 @@
 
 #define likely(x) __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
+#define UNUSED(d) d __attribute__ ((unused))
 #define static
 #define inline
 #define app_printf(format, args...) printf("\033[1m\033[45;37m[WLOC]"format"\033[0m\n", ##args)
