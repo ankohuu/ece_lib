@@ -8,10 +8,11 @@ LIBDIRS=src lib
 APPDIRS=app srv
 
 all:
-	${CC} -o ${TARGET} $$(find ./${APPDIRS} -name '*.o') ${LDFLAGS} ${LIBS}
+	${CC} -o ${TARGET} $$(find ${APPDIRS} -name '*.o') ${LDFLAGS} ${LIBS}
 
-${LIBS}:
-	$(AR) $(ARFLAGS) $@ $$(find ${LIBDIRS} -name '*.o')
+.PHONY: mklib
+mklib:
+	$(AR) $(ARFLAGS) ${LIBS} $$(find ${LIBDIRS} -name '*.o')
 
 # path of "make global scripts"  
 # NOTE, use absolute path. export once, use in all subdirs  
@@ -20,4 +21,4 @@ export MAKEINCLUDE=${PROJECTPATH}/cfg/make.global
       
 # include "make global scripts"  
 include ${MAKEINCLUDE}  
-all:${LIBS}
+all:mklib

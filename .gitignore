@@ -8,7 +8,9 @@
 # Vi swap files
 *.swp
 
+# Binary files
 ece
+libece.a
  
 # Precompiled Headers
 #*.gch

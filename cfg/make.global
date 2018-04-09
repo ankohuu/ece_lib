@@ -1,7 +1,7 @@
 #macro  
 CC=gcc
 AR=ar
-INCLUDES=-I$(PROJECTPATH)/include
+INCLUDES=-I$(PROJECTPATH)/inc
 CFLAGS=-Wall -Wextra -Wno-unused-parameter -Wno-unused-function $(INCLUDES) -g
 LDFLAGS=-lmosquitto -lpthread -lm
 ARFLAGS=rcs
