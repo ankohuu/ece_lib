@@ -1,0 +1,44 @@
+#macro  
+CC=gcc
+AR=ar
+INCLUDES=-I$(PROJECTPATH)/include
+CFLAGS=-Wall -Wextra -Wno-unused-parameter -Wno-unused-function $(INCLUDES) -g
+LDFLAGS=-lmosquitto -lpthread -lm
+ARFLAGS=rcs
+DEPS=$(OBJECTS:.o=.d)
+
+MAKEFLAGS+=--no-print-directory
+
+# rule
+# recursive make  
+.PHONY: all subdirs cleansubdirs  
+
+all: subdirs ${OBJECTS}
+
+subdirs:
+	@for dir in ${SUBDIRS}; do \
+		${MAKE} -C $$dir all;\
+	done  
+
+ifneq ($(MAKECMDGOALS), clean)
+    -include $(DEPS)
+endif
+
+# recursive make clean  
+cleansubdirs:  
+	@for dir in ${SUBDIRS}; do \
+		${MAKE} -C $$dir clean;\
+	done  
+
+clean:cleansubdirs
+	rm -f ${OBJECTS} ${DEPS} ${TARGET} ${LIBS}
+          
+# dependence  
+%.o: %.c  
+	${CC} ${CFLAGS} -c $< -o $@    
+
+%.d: %.c
+	@set -e; \
+	${CC} -MM ${CFLAGS} $^ > $@.$$$$; \
+	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+	rm -f $@.$$$$

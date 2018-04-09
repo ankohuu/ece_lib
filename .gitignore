@@ -1,0 +1,42 @@
+# Compiled Object files
+#*.slo
+#*.lo
+*.o
+*.d
+#*.obj
+
+# Vi swap files
+*.swp
+
+ece
+ 
+# Precompiled Headers
+#*.gch
+#*.pch
+# 
+# Compiled Dynamic libraries
+#*.so
+#*.dylib
+#*.dll
+# 
+# Fortran module files
+#*.mod
+#*.smod
+# 
+# Compiled Static libraries
+#*.lai
+#*.la
+#*.a
+#*.lib
+# 
+# Executables
+#*.exe
+#*.out
+#*.app
+# 
+# Dir
+#build-Release/
+#build-Debug/
+# 
+#The user local envirment file
+#*.user
