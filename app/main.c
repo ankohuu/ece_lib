@@ -101,13 +101,20 @@ static void app_run(void)
     return;
 }
 
+extern int srv_init(void);
+
 int
 main()
 {
+    /* server init */
+    (void)srv_init();
+
+    sleep(1);
     app_printf("app begin");
 
     /* initcalls */
     mosquitto_lib_init();
+    (void)edge_init();
 
     /* functions */
 #if 0

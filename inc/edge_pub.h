@@ -8,6 +8,8 @@ enum edge_access_type
     ACCESS_BUTT,
 };
 
+extern int edge_init(void);
+/* data path entry */
 extern long edge_rcv_pkt(enum edge_access_type type, unsigned long module, unsigned char *pkt, unsigned long size);
 
 #endif
