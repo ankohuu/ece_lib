@@ -13,6 +13,7 @@
 #include "base_def.h"
 #include "lib_cli.h"
 #include "lib_misc.h"
+#include "mgt.h"
 
 extern pthread_cond_t g_app_cond;
 extern pthread_mutex_t g_app_mutex;
@@ -20,10 +21,14 @@ extern unsigned char *g_app_pkt;
 extern unsigned long g_app_pkt_len;
 extern unsigned long g_app_pkt_module;
 static unsigned char g_app_file_pkt[512];
+extern struct edge_mgt_control client_ctl;
+extern struct edge_mgt_control g_edge_mgt_ctl;
 
 #define CLITEST_PORT                8000
 #define MODE_CONFIG_INT             10
 #define MODE_CONFIG_WLOC            20
+#define MODE_CONFIG_SERVER          21
+#define MODE_CONFIG_EDGE            23
 
 unsigned int regular_count = 0;
 unsigned int debug_regular = 0;
@@ -225,6 +230,83 @@ int cmd_wloc_rcv_cli_pkt(struct cli_def *cli, UNUSED(const char *command), char 
     return CLI_OK;
 }
 
+
+int cmd_config_server(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
+{
+    cli_set_configmode(cli, MODE_CONFIG_SERVER, "server");
+    return CLI_OK;
+}
+
+int cmd_config_edge(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
+{
+    cli_set_configmode(cli, MODE_CONFIG_EDGE, "edge");
+    return CLI_OK;
+}
+
+int cmd_edge_on(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
+{
+    client_ctl.function = EDGE_FUNC_ON;
+    return CLI_OK;
+}
+
+int cmd_edge_off(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
+{
+    client_ctl.function = EDGE_FUNC_OFF;
+    return CLI_OK;
+}
+
+int cmd_edge_hello(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
+{
+    unsigned int num;
+    if (argc != 1)
+    {
+        cli_print(cli, "hello interval:%u", g_edge_mgt_ctl.hello_interval);
+        return CLI_OK;
+    }
+
+    if (strcmp(argv[0], "?") == 0)
+        cli_print(cli, "int num");
+    else {
+        sscanf(argv[0], "%u", &num);
+        if (num != 0) {
+            g_edge_mgt_ctl.hello_interval = num;
+        }
+    }
+    return CLI_OK;
+}
+
+int cmd_edge_timeout(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
+{
+    unsigned int num;
+    if (argc != 1)
+    {
+        cli_print(cli, "timeout number:%u", g_edge_mgt_ctl.timeout_num);
+        return CLI_OK;
+    }
+
+    if (strcmp(argv[0], "?") == 0)
+        cli_print(cli, "int num");
+    else {
+        sscanf(argv[0], "%u", &num);
+        if (num != 0) {
+            g_edge_mgt_ctl.timeout_num = num;
+        }
+    }
+    return CLI_OK;
+}
+
+int cmd_edge_online(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
+{
+    client_ctl.status = EDGE_STATUS_ONLINE;
+    return CLI_OK;
+}
+
+int cmd_edge_offline(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
+{
+    client_ctl.status = EDGE_STATUS_OFFLINE;
+    return CLI_OK;
+}
+
 int cmd_config_int_exit(struct cli_def *cli, UNUSED(const char *command), UNUSED(char *argv[]), UNUSED(int argc))
 {
     cli_set_configmode(cli, MODE_CONFIG, NULL);
@@ -324,6 +406,29 @@ int cli_main()
                          "Receive packet file");
     cli_register_command(cli, c, "cli", cmd_wloc_rcv_cli_pkt, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_WLOC, 
                          "Receive packets from cli");
+
+    
+    cli_register_command(cli, NULL, "server", cmd_config_server, PRIVILEGE_UNPRIVILEGED, MODE_EXEC,
+                         "Configure edge server");
+
+    cli_register_command(cli, NULL, "edge", cmd_config_edge, PRIVILEGE_UNPRIVILEGED, MODE_EXEC,
+                         "Configure edge client");
+    c = cli_register_command(cli, NULL, "status", NULL, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_EDGE, 
+                         "Online/Offline");
+    cli_register_command(cli, c, "online", cmd_edge_online, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_EDGE, 
+                         "Online");
+    cli_register_command(cli, c, "offline", cmd_edge_offline, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_EDGE, 
+                         "Offline");
+    c = cli_register_command(cli, NULL, "function", NULL, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_EDGE, 
+                         "On/Off edge compute");
+    cli_register_command(cli, c, "on", cmd_edge_on, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_EDGE, 
+                         "On");
+    cli_register_command(cli, c, "off", cmd_edge_off, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_EDGE, 
+                         "Off");
+    cli_register_command(cli, NULL, "hello-interval", cmd_edge_hello, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_EDGE, 
+                         "change hello packet interval");
+    cli_register_command(cli, NULL, "timeout-num", cmd_edge_timeout, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_EDGE, 
+                         "change client timeout number");
 #if 0
     cli_regular(cli, regular_callback);
     cli_regular_interval(cli, 5); // Defaults to 1 second

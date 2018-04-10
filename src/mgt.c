@@ -13,8 +13,10 @@
 #include "mgt.h"
 #include "edge_pub.h"
 
-static struct edge_mgt_control g_edge_mgt_ctl = {EDGE_STATUS_OFFLINE, EDGE_FUNC_ON};
+struct edge_mgt_control g_edge_mgt_ctl = {EDGE_STATUS_OFFLINE, EDGE_FUNC_ON, 20, 3};
 static struct edge_mgt_stat g_edge_mgt_stat;
+
+char *edge_msg[EDGE_PRO_BUTT] = {"Hello", "Acknowledge"};
 
 static void mgt_send_msg(unsigned char *msg, unsigned long len)
 {
@@ -43,12 +45,45 @@ static unsigned long mgt_send_hello_msg(void)
 
     mgt_send_msg((unsigned char *)tlv, sizeof(*tlv) + sizeof(*ctl) + sizeof(*stat));
 
+    if (EDGE_STATUS_ONLINE == g_edge_mgt_ctl.status)
+        g_edge_mgt_stat.timeout++;
+    
     free(tlv);
     return 0;
 }
 
 static unsigned long mgt_rcv_msg(unsigned char *msg, unsigned long len)
 {
+    struct edge_mgt_tlv *tlv = (struct edge_mgt_tlv *)msg;
+
+    if (len < sizeof(*tlv))
+        return 1;
+
+    g_edge_mgt_stat.timeout = 0;
+    msg += sizeof(*tlv);
+    len -= sizeof(*tlv);
+    lib_printf("edge get [%s] msg", edge_msg[tlv->type]);
+
+    switch (tlv->type)
+    {
+        case EDGE_PRO_ACK:
+        {
+            struct edge_mgt_control *ctl = (struct edge_mgt_control *)msg;
+            if (len < sizeof(struct edge_mgt_control))
+                return 1;
+            if (g_edge_mgt_ctl.status != EDGE_STATUS_ONLINE)
+                lib_printf("edge client goes online");
+            g_edge_mgt_ctl.status = EDGE_STATUS_ONLINE;
+            if (ctl->function != g_edge_mgt_ctl.function) {
+                lib_printf("edge client function is %s", (EDGE_FUNC_ON == ctl->function)?"on":"off");
+                g_edge_mgt_ctl.function = ctl->function;
+            }
+            break;
+        }
+        default:
+            break;
+    }
+
     return 0;
 }
 
@@ -56,8 +91,14 @@ static void do_mgt_periodic(void)
 {
     static unsigned long tick = 0;
 
-    if (0 == tick%2)
+    if (0 == tick%g_edge_mgt_ctl.hello_interval)
         mgt_send_hello_msg();
+
+    if (g_edge_mgt_stat.timeout >= g_edge_mgt_ctl.timeout_num 
+        && EDGE_STATUS_ONLINE == g_edge_mgt_ctl.status) {
+        g_edge_mgt_ctl.status = EDGE_STATUS_OFFLINE;
+        lib_printf("edge client goes offline");
+    }
 
     tick++;
     return;
@@ -66,11 +107,11 @@ static void do_mgt_periodic(void)
 static void mgt_msg_cb(struct mosquitto *mosq, void *data, const struct mosquitto_message *msg)
 {
     if (msg->payloadlen) {
-        printf("get mqtt message topic:%s oth:%s\n", msg->topic, (char *)msg->payload);
+        if (!strncmp((char *)msg->topic, MQTT_EDGE_LIB_WLOC_TOPIC, strlen((char *)msg->topic)))
+            mgt_rcv_msg((unsigned char *)msg->payload, msg->payloadlen);
+
         /* execute commands */
         #if 0
-        if (!strncmp((char *)msg->topic, "cmd", strlen((char *)msg->topic)))
-            exec_cmd((char *)msg->payload);
         else if (!strncmp((char *)msg->topic, "edge", strlen((char *)msg->topic)))
             edge_rule_engine((char *)msg->payload, msg->payloadlen);
         #endif

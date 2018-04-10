@@ -17,12 +17,15 @@ struct edge_mgt_stat
 {
     unsigned char mac[6];
     unsigned int link_type;
+    unsigned int timeout;
 } __attribute__((packed));
 
 struct edge_mgt_control
 {
     unsigned int status;
     unsigned int function;
+    unsigned int hello_interval;
+    unsigned int timeout_num;
 } __attribute__((packed));
 
 enum edge_mgt_protocol_type
@@ -38,6 +41,13 @@ struct edge_mgt_tlv
     unsigned int len;
     unsigned char val[0];
 } __attribute__((packed));
+
+extern struct edge_mgt_control g_edge_mgt_ctl;
+
+static inline unsigned int get_edge_function(void)
+{
+    return g_edge_mgt_ctl.function;
+}
 
 extern int mgt_init(void);
 

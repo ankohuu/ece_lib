@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>
@@ -7,13 +8,22 @@
 #include "lib_misc.h"
 #include "mgt.h"
 
-static char *edge_msg[EDGE_PRO_BUTT] = {"Hello", "Acknowledge"};
-static struct edge_mgt_control client_ctl = {EDGE_STATUS_ONLINE, EDGE_FUNC_ON};
-static struct edge_mgt_stat client_stat;
+extern char *edge_msg[EDGE_PRO_BUTT];
+struct edge_mgt_control client_ctl = {.status = EDGE_STATUS_ONLINE, .function = EDGE_FUNC_ON};
+struct edge_mgt_stat client_stat;
+
+void srv_send_edge_msg(unsigned char *msg, unsigned long len)
+{
+    send_mqtt_msg(MQTT_EDGE_LIB_WLOC_TOPIC, (void *)msg, len);
+    return;
+}
 
 void rcv_edge_msg(unsigned char *msg, unsigned long len)
 {
     struct edge_mgt_tlv *tlv = (struct edge_mgt_tlv *)msg;
+
+    if (EDGE_STATUS_OFFLINE == client_ctl.status)
+        return;
 
     if (len < sizeof(*tlv))
         return;
@@ -24,6 +34,7 @@ void rcv_edge_msg(unsigned char *msg, unsigned long len)
     {
         case EDGE_PRO_HELLO:
         {
+            struct edge_mgt_control *ctl;
             memcpy(&client_stat, msg + sizeof(*tlv) + sizeof(client_ctl), sizeof(client_stat));
             srv_printf("hello from gateway[%2.2x-%2.2x-%2.2x-%2.2x-%2.2x-%2.2x] link service type:wloc",
                 client_stat.mac[0],  
@@ -33,6 +44,18 @@ void rcv_edge_msg(unsigned char *msg, unsigned long len)
                 client_stat.mac[4],  
                 client_stat.mac[5]  
             );
+
+            tlv = malloc(sizeof(*tlv) + sizeof(*ctl));
+            if (NULL == tlv)
+                break;
+            memset(tlv, 0, sizeof(*tlv) + sizeof(*ctl));
+            tlv->type = EDGE_PRO_ACK;
+            tlv->len = sizeof(*ctl);
+            ctl = (struct edge_mgt_control *)tlv->val;
+            ctl->status = client_ctl.status;
+            ctl->function = client_ctl.function;
+            srv_send_edge_msg((unsigned char *)tlv, sizeof(*tlv) + sizeof(*ctl));
+            free(tlv);
             break;
         }
         default:
