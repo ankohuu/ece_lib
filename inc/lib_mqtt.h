@@ -3,6 +3,8 @@
 
 #include <mosquitto.h>
 
+#define MQTT_EDGE_LIB_WLOC_TOPIC "edge-client-wloc"
+#define MQTT_OASIS_EDGE_SERVER_TOPIC "oasis-edge-server"
 #define HOST "localhost"
 #define PORT  1883
 #define KEEP_ALIVE 60
