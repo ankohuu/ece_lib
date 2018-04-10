@@ -7,42 +7,60 @@
 #include "hash_map.h"
 #include "list.h"
 #include "pdt.h"
+#include "attr.h"
 
 static hash_map g_pdt_map;
 
-#if 0
-void device_module_show_pkt_fmt(hash_map *map, void *key, void *data)
+struct edge_attr * pdt_add_attr(struct edge_pdt *pdt, unsigned int topic, enum edge_attr_type type, unsigned long len)
 {
-    struct g1_fmt *fmt = (struct g1_fmt *)data;
+    struct pdt_attr *attr;
+    struct edge_attr *eattr;
 
-    lib_printf("show packet format key:%x size:%lu",
-        fmt->key, fmt->size);
-    return;
-}
+    if (NULL == pdt || 0 == topic || EDGE_ATTR_BUTT <= type || 0 == len)
+        return NULL;
 
-void device_module_show(hash_map *map, void *key, void *data)
-{
-    struct device_module *module = (struct device_module *)data;
-    struct list_node *pos, *next;
-    struct device *dev;
-
-    lib_printf("show device module topic:%x scenerio:%lu endian:%lu",
-        module->topic, module->scenerio_id, module->endian);
-	hash_map_work(module->gfs.fmt_map, device_module_show_pkt_fmt);
-    for (next = (pos = (&module->head)->n.next, pos->next); pos != &(&module->head)->n; pos = next, next = pos->next) {
-        dev = container_of(pos, struct device, list);
-        lib_printf("\tdev oid:%s", dev->oid);
+    attr = hash_map_get(&pdt->attr_map, (void *)&topic);
+    if (NULL == attr) {
+        attr = (struct pdt_attr *)malloc(sizeof(*attr));
+        if (unlikely(NULL == attr))
+            return NULL;
+        memset(attr, 0x0, sizeof(*attr));
+        attr->topic = topic;
+        hash_map_put(&pdt->attr_map, (void *)&attr->topic, (void *)attr);
     }
-    return;
+    attr->ref++;
+    eattr = add_attr(topic, type, len);
+    if (unlikely(NULL == eattr)) {
+        attr->ref--;
+        if (0 == attr->ref) {
+	        hash_map_remove(&pdt->attr_map, (void *)&topic);
+            free(attr);
+        }
+    }
+    return eattr;
 }
 
-void device_module_show_all(void)
+void pdt_del_attr(struct edge_pdt *pdt, unsigned int topic)
 {
-    hash_map_work(&g_device_module_map, device_module_show);
-    return;
-}
-#endif
+    struct pdt_attr *attr;
 
+    if (NULL == pdt || 0 == topic)
+        return;
+
+    /* find */
+    attr = hash_map_get(&pdt->attr_map, (void *)&topic);
+    if (unlikely(NULL == attr))
+        return;
+
+    attr->ref--;
+    if (0 == attr->ref) {
+        /* delete devices attribute value */
+        hash_map_remove(&pdt->attr_map, (void *)&topic);
+        free(attr);
+    }
+
+    return del_attr(topic);
+}
 
 struct edge_pdt *add_pdt(unsigned int topic, enum edge_pdt_endian endian)
 {
@@ -55,13 +73,14 @@ struct edge_pdt *add_pdt(unsigned int topic, enum edge_pdt_endian endian)
     pdt = (struct edge_pdt *)malloc(sizeof(*pdt));
     if (NULL == pdt)
         return NULL;
-    lib_printf("add product topic:%x endian:%u", topic, endian);
+    lib_printf("add product topic:0x%x endian:%u", topic, endian);
     pdt->topic = topic;
     pdt->endian = endian;
 
 	/* build for other */
 	//g1_fmt_set_init(&module->gfs);
     INIT_LIST_HEAD(&pdt->head);
+    hash_map_init(&pdt->attr_map, 4, int_cmp, int_hash_func);
 
 	/* hello world */
     hash_map_put(&g_pdt_map, (void *)&pdt->topic, (void *)pdt);
@@ -78,30 +97,13 @@ void del_pdt(unsigned int topic)
 {
 	struct edge_pdt *pdt;
 	struct list_node *pos, *next;
-#if 0
-    struct device_module *module;
-    struct list_node *pos, *next;
-    struct device *dev;
-
-    if (NULL == (module = get_device_module(topic)))
-        return;
-
-    lib_printf("del device module topic:%x", topic);
-    for (next = (pos = (&module->head)->n.next, pos->next); pos != &(&module->head)->n; pos = next, next = pos->next) {
-        dev = container_of(pos, struct device, list);
-        lib_printf("del dev oid:%s", dev->oid);
-        delete_device_internal(dev);
-    }
-	g1_fmt_set_des(&module->gfs);
-    hash_map_remove(&g_device_module_map, (void *)&topic);
-    free(module);
-#endif
 
 	/* find */
 	pdt = hash_map_get(&g_pdt_map, (void *)&topic);
 	if (unlikely(NULL == pdt))
 		return;
 
+    lib_printf("del product topic:0x%x", topic);
 	/* down escape */
 		//device
 	for (next = (pos = (&pdt->head)->n.next, pos->next); pos != &(&pdt->head)->n; pos = next, next = pos->next) {
@@ -117,6 +119,34 @@ void del_pdt(unsigned int topic)
 	/* free */
     free(pdt);
 
+    return;
+}
+
+void show_pdt(struct edge_pdt *pdt)
+{
+    if (NULL == pdt)
+        return;
+    lib_printf("product topic:0x%x endian %s", pdt->topic, 
+        (EDGE_BIG_ENDIAN == pdt->endian)?"BIG":"SMALL");
+#if 0
+	hash_map_work(module->gfs.fmt_map, device_module_show_pkt_fmt);
+    for (next = (pos = (&module->head)->n.next, pos->next); pos != &(&module->head)->n; pos = next, next = pos->next) {
+        dev = container_of(pos, struct device, list);
+        lib_printf("\tdev oid:%s", dev->oid);
+    }
+#endif
+    return;
+}
+
+void hash_show_pdt(hash_map *map, void *key, void *data)
+{
+    struct edge_pdt *pdt= (struct edge_pdt *)data;
+    return show_pdt(pdt);
+}
+
+void show_all_pdt(void)
+{
+    hash_map_work(&g_pdt_map, hash_show_pdt);
     return;
 }
 

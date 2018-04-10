@@ -11,13 +11,14 @@
 #include "base_def.h"
 #include "lib_mqtt.h"
 #include "mgt.h"
+#include "pdt.h"
 #include "edge_pub.h"
 
 static struct edge_mgt_stat g_edge_mgt_stat;
 
-struct edge_mgt_control g_edge_mgt_ctl = {EDGE_STATUS_OFFLINE, EDGE_FUNC_ON, 0, 20, 3};
+struct edge_mgt_control g_edge_mgt_ctl = {EDGE_STATUS_OFFLINE, EDGE_FUNC_ON, 0, 240, 3};
 pthread_rwlock_t g_edge_rwlock;
-char *edge_msg[EDGE_PRO_BUTT] = {"Hello", "Acknowledge"};
+char *edge_msg[EDGE_PRO_BUTT] = {"Hello", "Acknowledge", "AddProduct", "DelProduct"};
 
 static void mgt_send_msg(unsigned char *msg, unsigned long len)
 {
@@ -82,6 +83,22 @@ static unsigned long mgt_rcv_msg(unsigned char *msg, unsigned long len)
                 lib_printf("edge client function is %s", (EDGE_FUNC_ON == ctl->function)?"on":"off");
                 g_edge_mgt_ctl.function = ctl->function;
             }
+            break;
+        }
+        case EDGE_PRO_PDT_ADD:
+        {
+            struct edge_mgt_pdt_add *add = (struct edge_mgt_pdt_add *)msg;
+            if (len < sizeof(*add))
+                break;
+            add_pdt(ntohl(add->topic), ntohl(add->endian));
+            break;
+        }
+        case EDGE_PRO_PDT_DEL:
+        {
+            struct edge_mgt_pdt_del *del = (struct edge_mgt_pdt_del *)msg;
+            if (len < sizeof(*del))
+                break;
+            del_pdt(ntohl(del->topic));
             break;
         }
         default:

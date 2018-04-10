@@ -279,6 +279,13 @@ int cmd_server_del_pdt(struct cli_def *cli, UNUSED(const char *command), char *a
     return CLI_OK;
 }
 
+extern void show_all_pdt(void);
+int cmd_server_show_pdt(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
+{
+    show_all_pdt();
+    return CLI_OK;
+}
+
 int cmd_config_edge(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
 {
     cli_set_configmode(cli, MODE_CONFIG_EDGE, "edge");
@@ -434,7 +441,7 @@ int cli_main()
     cli_set_banner(cli, "edge compute environment");
     cli_set_hostname(cli, "cli");
     cli_telnet_protocol(cli, 1);
-    cli_set_idle_timeout_callback(cli, 60, idle_timeout); 
+    cli_set_idle_timeout_callback(cli, 120, idle_timeout); 
 
     cli_register_command(cli, NULL, "wloc", cmd_config_wloc, PRIVILEGE_UNPRIVILEGED, MODE_EXEC,
                          "Configure wloc process");
@@ -455,9 +462,11 @@ int cli_main()
 	c = cli_register_command(cli, NULL, "product", NULL, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_SERVER, 
                          "Product add/delete");
 	cli_register_command(cli, c, "add", cmd_server_add_pdt, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_SERVER, 
-                         "add");
+                         "add product");
 	cli_register_command(cli, c, "delete", cmd_server_del_pdt, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_SERVER, 
-                         "delete");
+                         "delete product");
+	cli_register_command(cli, c, "show", cmd_server_show_pdt, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_SERVER, 
+                         "show all products");
 
     cli_register_command(cli, NULL, "edge", cmd_config_edge, PRIVILEGE_UNPRIVILEGED, MODE_EXEC,
                          "Configure edge client");
