@@ -2,20 +2,62 @@
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>
+#include <arpa/inet.h>
 
 #include "base_def.h"
 #include "lib_mqtt.h"
 #include "lib_misc.h"
 #include "mgt.h"
+#include "pdt.h"
+
 
 extern char *edge_msg[EDGE_PRO_BUTT];
-struct edge_mgt_control client_ctl = {.status = EDGE_STATUS_ONLINE, .function = EDGE_FUNC_ON};
+struct edge_mgt_control client_ctl = {.status = EDGE_STATUS_ONLINE, .function = EDGE_FUNC_ON, .scenerio_id = 15};
 struct edge_mgt_stat client_stat;
 
-void srv_send_edge_msg(unsigned char *msg, unsigned long len)
+static void srv_send_edge_msg(unsigned char *msg, unsigned long len)
 {
     send_mqtt_msg(MQTT_EDGE_LIB_WLOC_TOPIC, (void *)msg, len);
     return;
+}
+
+void srv_add_pdt(unsigned int topic, enum edge_pdt_endian endian)
+{
+	struct edge_mgt_tlv *tlv;
+	struct edge_mgt_pdt_add *data;
+	unsigned long len = sizeof(*tlv) + sizeof(*data);
+	
+	tlv = malloc(len);
+    if (NULL == tlv)
+        return;
+    memset(tlv, 0, len);
+    tlv->type = EDGE_PRO_PDT_ADD;
+    tlv->len = sizeof(*data);
+    data= (struct edge_mgt_pdt_add *)tlv->val;
+    data->topic = htonl(topic);
+	data->endian = htonl(endian);
+    srv_send_edge_msg((unsigned char *)tlv, len);
+    free(tlv);
+	return;
+}
+
+void srv_del_pdt(unsigned int topic)
+{
+	struct edge_mgt_tlv *tlv;
+	struct edge_mgt_pdt_del *data;
+	unsigned long len = sizeof(*tlv) + sizeof(*data);
+	
+	tlv = malloc(len);
+    if (NULL == tlv)
+        return;
+    memset(tlv, 0, len);
+    tlv->type = EDGE_PRO_PDT_DEL;
+    tlv->len = sizeof(*data);
+    data = (struct edge_mgt_pdt_del *)tlv->val;
+    data->topic = htonl(topic);
+	srv_send_edge_msg((unsigned char *)tlv, len);
+    free(tlv);
+	return;
 }
 
 void rcv_edge_msg(unsigned char *msg, unsigned long len)
@@ -54,6 +96,7 @@ void rcv_edge_msg(unsigned char *msg, unsigned long len)
             ctl = (struct edge_mgt_control *)tlv->val;
             ctl->status = client_ctl.status;
             ctl->function = client_ctl.function;
+            ctl->scenerio_id = client_ctl.scenerio_id;
             srv_send_edge_msg((unsigned char *)tlv, sizeof(*tlv) + sizeof(*ctl));
             free(tlv);
             break;

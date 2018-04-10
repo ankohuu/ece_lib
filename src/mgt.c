@@ -13,9 +13,10 @@
 #include "mgt.h"
 #include "edge_pub.h"
 
-struct edge_mgt_control g_edge_mgt_ctl = {EDGE_STATUS_OFFLINE, EDGE_FUNC_ON, 20, 3};
 static struct edge_mgt_stat g_edge_mgt_stat;
 
+struct edge_mgt_control g_edge_mgt_ctl = {EDGE_STATUS_OFFLINE, EDGE_FUNC_ON, 0, 20, 3};
+pthread_rwlock_t g_edge_rwlock;
 char *edge_msg[EDGE_PRO_BUTT] = {"Hello", "Acknowledge"};
 
 static void mgt_send_msg(unsigned char *msg, unsigned long len)
@@ -64,15 +65,18 @@ static unsigned long mgt_rcv_msg(unsigned char *msg, unsigned long len)
     len -= sizeof(*tlv);
     lib_printf("edge get [%s] msg", edge_msg[tlv->type]);
 
+    /* don't use return in switch, global lock around */
+    pthread_rwlock_wrlock(&g_edge_rwlock);
     switch (tlv->type)
     {
         case EDGE_PRO_ACK:
         {
             struct edge_mgt_control *ctl = (struct edge_mgt_control *)msg;
             if (len < sizeof(struct edge_mgt_control))
-                return 1;
+                break;
+            g_edge_mgt_ctl.scenerio_id = ctl->scenerio_id;
             if (g_edge_mgt_ctl.status != EDGE_STATUS_ONLINE)
-                lib_printf("edge client goes online");
+                lib_printf("edge client goes online scenerio id:%u", g_edge_mgt_ctl.scenerio_id);
             g_edge_mgt_ctl.status = EDGE_STATUS_ONLINE;
             if (ctl->function != g_edge_mgt_ctl.function) {
                 lib_printf("edge client function is %s", (EDGE_FUNC_ON == ctl->function)?"on":"off");
@@ -83,6 +87,7 @@ static unsigned long mgt_rcv_msg(unsigned char *msg, unsigned long len)
         default:
             break;
     }
+    pthread_rwlock_unlock(&g_edge_rwlock);
 
     return 0;
 }
@@ -156,7 +161,9 @@ static void *mgt_main(void *arg)
     while (1) {
         ret = mosquitto_loop(mosq, 1000, 1);
         if (0 == ret) {
+            pthread_rwlock_wrlock(&g_edge_rwlock);
             do_mgt_periodic();
+            pthread_rwlock_unlock(&g_edge_rwlock);
         }
     }
     mosquitto_destroy(mosq);
@@ -202,6 +209,11 @@ int mgt_init(void)
     memset(&g_edge_mgt_stat, 0x00, sizeof(g_edge_mgt_stat));
     get_device_mac(g_edge_mgt_stat.mac);
     g_edge_mgt_stat.link_type = ACCESS_WLOC;
+
+    if (0 != pthread_rwlock_init(&g_edge_rwlock, NULL)) {
+        lib_printf("edge client create rw lock failed");
+        return 1;
+    }
 
     if (0 != pthread_create(&thread, NULL, mgt_main, NULL))
         return 1;

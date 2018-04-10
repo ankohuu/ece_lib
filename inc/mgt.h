@@ -24,6 +24,7 @@ struct edge_mgt_control
 {
     unsigned int status;
     unsigned int function;
+    unsigned int scenerio_id;
     unsigned int hello_interval;
     unsigned int timeout_num;
 } __attribute__((packed));
@@ -32,6 +33,8 @@ enum edge_mgt_protocol_type
 {
     EDGE_PRO_HELLO = 0,
     EDGE_PRO_ACK,
+    EDGE_PRO_PDT_ADD,
+    EDGE_PRO_PDT_DEL,
     EDGE_PRO_BUTT,
 };
 
@@ -40,6 +43,15 @@ struct edge_mgt_tlv
     unsigned int type;
     unsigned int len;
     unsigned char val[0];
+} __attribute__((packed));
+
+struct edge_mgt_pdt_add {
+    unsigned int topic;
+    unsigned int endian;
+} __attribute__((packed));
+
+struct edge_mgt_pdt_del {
+    unsigned int topic;
 } __attribute__((packed));
 
 extern struct edge_mgt_control g_edge_mgt_ctl;

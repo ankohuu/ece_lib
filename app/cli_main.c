@@ -13,6 +13,7 @@
 #include "base_def.h"
 #include "lib_cli.h"
 #include "lib_misc.h"
+#include "pdt.h"
 #include "mgt.h"
 
 extern pthread_cond_t g_app_cond;
@@ -237,6 +238,47 @@ int cmd_config_server(struct cli_def *cli, UNUSED(const char *command), char *ar
     return CLI_OK;
 }
 
+extern void srv_add_pdt(unsigned int topic, enum edge_pdt_endian endian);
+int cmd_server_add_pdt(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
+{
+	unsigned int topic, len, num = 0;
+    if ((argc >= 1 && strcmp(argv[0], "?") == 0) || argc != 2)
+    {
+        cli_print(cli, "Usage:topic[hex] endian[1-big 2-small]");
+        return CLI_OK;
+    }
+
+	len = ch_to_hex(argv[0], (unsigned char *)&topic);
+    if (4 != len)
+        return CLI_OK;
+	topic = ntohl(topic);
+	sscanf(argv[1], "%u", &num);
+    if (num > 2 || num == 0)
+    	return CLI_OK;        
+	//printf("topic:%x endian:%u\r\n", topic, num);
+	srv_add_pdt(topic, num);
+    return CLI_OK;
+}
+
+extern void srv_del_pdt(unsigned int topic);
+int cmd_server_del_pdt(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
+{
+	unsigned int topic, len;
+    if ((argc >= 1 && strcmp(argv[0], "?") == 0) || argc != 1)
+    {
+        cli_print(cli, "Usage:topic[hex]");
+        return CLI_OK;
+    }
+
+	len = ch_to_hex(argv[0], (unsigned char *)&topic);
+    if (4 != len)
+        return CLI_OK;
+	topic = ntohl(topic);
+	//printf("topic:%x\r\n", topic);
+	srv_del_pdt(topic);
+    return CLI_OK;
+}
+
 int cmd_config_edge(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
 {
     cli_set_configmode(cli, MODE_CONFIG_EDGE, "edge");
@@ -410,6 +452,12 @@ int cli_main()
     
     cli_register_command(cli, NULL, "server", cmd_config_server, PRIVILEGE_UNPRIVILEGED, MODE_EXEC,
                          "Configure edge server");
+	c = cli_register_command(cli, NULL, "product", NULL, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_SERVER, 
+                         "Product add/delete");
+	cli_register_command(cli, c, "add", cmd_server_add_pdt, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_SERVER, 
+                         "add");
+	cli_register_command(cli, c, "delete", cmd_server_del_pdt, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_SERVER, 
+                         "delete");
 
     cli_register_command(cli, NULL, "edge", cmd_config_edge, PRIVILEGE_UNPRIVILEGED, MODE_EXEC,
                          "Configure edge client");
