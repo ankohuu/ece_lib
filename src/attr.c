@@ -39,7 +39,7 @@ struct edge_attr *get_attr(unsigned int topic)
     return hash_map_get(&g_attr_map, (void *)&topic);
 }
 
-void del_attr(unsigned int topic)
+void del_attr_ref(unsigned int topic, unsigned long ref)
 {
 	struct edge_attr *attr;
 
@@ -48,16 +48,27 @@ void del_attr(unsigned int topic)
 	if (unlikely(NULL == attr))
 		return;
 
-    attr->ref--;
+	if (attr->ref >= ref) {
+		attr->ref -= ref;
+	} else {
+		lib_printf("del ref error topic:0x%x ref:%lu", topic, ref);
+		attr->ref = 0;
+	}
+
     if (0 == attr->ref) {
         lib_printf("del attribute topic:0x%x", topic);
 	    hash_map_remove(&g_attr_map, (void *)&topic);
         free(attr);
     }
     else
-        lib_printf("attribute topic:0x%x sub reference", topic);
+        lib_printf("attribute topic:0x%x sub reference %lu", topic, ref);
         
     return;
+}
+
+void del_attr(unsigned int topic)
+{
+	return del_attr_ref(topic, 1);
 }
 
 void show_attr(struct edge_attr *attr)

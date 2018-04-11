@@ -81,6 +81,7 @@ struct edge_pdt *add_pdt(unsigned int topic, enum edge_pdt_endian endian)
 	//g1_fmt_set_init(&module->gfs);
     INIT_LIST_HEAD(&pdt->head);
     hash_map_init(&pdt->attr_map, 4, int_cmp, int_hash_func);
+	hash_map_init(&pdt->fmt_map, 4, int_cmp, int_hash_func);
 
 	/* hello world */
     hash_map_put(&g_pdt_map, (void *)&pdt->topic, (void *)pdt);

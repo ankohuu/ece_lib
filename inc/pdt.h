@@ -17,6 +17,7 @@ struct edge_pdt
     //struct g1_fmt_set gfs;
     struct list_head head;
     hash_map attr_map;
+	hash_map fmt_map;
 };
 
 struct pdt_attr
@@ -26,6 +27,7 @@ struct pdt_attr
 };
 
 extern struct edge_pdt *add_pdt(unsigned int topic, enum edge_pdt_endian endian);
+extern struct edge_pdt *get_pdt(unsigned int topic);
 extern void del_pdt(unsigned int topic);
 extern int pdt_init(void);
 

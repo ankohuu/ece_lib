@@ -60,6 +60,46 @@ void srv_del_pdt(unsigned int topic)
 	return;
 }
 
+void srv_add_g1_fmt(unsigned int topic, unsigned int key)
+{
+	struct edge_mgt_tlv *tlv;
+	struct edge_mgt_g1_fmt_add *data;
+	unsigned long len = sizeof(*tlv) + sizeof(*data);
+	
+	tlv = malloc(len);
+    if (NULL == tlv)
+        return;
+    memset(tlv, 0, len);
+    tlv->type = EDGE_PRO_G1_FMT_ADD;
+    tlv->len = sizeof(*data);
+    data= (struct edge_mgt_g1_fmt_add *)tlv->val;
+    data->topic = htonl(topic);
+	data->key = htonl(key);
+    srv_send_edge_msg((unsigned char *)tlv, len);
+    free(tlv);
+	return;
+}
+
+void srv_del_g1_fmt(unsigned int topic, unsigned int key)
+{
+	struct edge_mgt_tlv *tlv;
+	struct edge_mgt_g1_fmt_del *data;
+	unsigned long len = sizeof(*tlv) + sizeof(*data);
+	
+	tlv = malloc(len);
+    if (NULL == tlv)
+        return;
+    memset(tlv, 0, len);
+    tlv->type = EDGE_PRO_G1_FMT_DEL;
+    tlv->len = sizeof(*data);
+    data= (struct edge_mgt_g1_fmt_del *)tlv->val;
+    data->topic = htonl(topic);
+	data->key = htonl(key);
+    srv_send_edge_msg((unsigned char *)tlv, len);
+    free(tlv);
+	return;
+}
+
 void rcv_edge_msg(unsigned char *msg, unsigned long len)
 {
     struct edge_mgt_tlv *tlv = (struct edge_mgt_tlv *)msg;

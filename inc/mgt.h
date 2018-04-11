@@ -35,6 +35,8 @@ enum edge_mgt_protocol_type
     EDGE_PRO_ACK,
     EDGE_PRO_PDT_ADD,
     EDGE_PRO_PDT_DEL,
+    EDGE_PRO_G1_FMT_ADD,
+    EDGE_PRO_G1_FMT_DEL,
     EDGE_PRO_BUTT,
 };
 
@@ -53,6 +55,17 @@ struct edge_mgt_pdt_add {
 struct edge_mgt_pdt_del {
     unsigned int topic;
 } __attribute__((packed));
+
+struct edge_mgt_g1_fmt_add {
+    unsigned int topic;
+    unsigned int key;
+} __attribute__((packed));
+
+struct edge_mgt_g1_fmt_del {
+    unsigned int topic;
+	unsigned int key;
+} __attribute__((packed));
+
 
 extern struct edge_mgt_control g_edge_mgt_ctl;
 

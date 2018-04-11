@@ -286,6 +286,56 @@ int cmd_server_show_pdt(struct cli_def *cli, UNUSED(const char *command), char *
     return CLI_OK;
 }
 
+extern void srv_add_g1_fmt(unsigned int topic, unsigned int key);
+int cmd_server_add_g1_fmt(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
+{
+	int len;
+	unsigned int topic = 0;
+	unsigned int key = 0;
+	
+    if ((argc >= 1 && strcmp(argv[0], "?") == 0) || argc != 2)
+    {
+        cli_print(cli, "Usage:product topic[hex] fmt key[hex]");
+        return CLI_OK;
+    }
+
+	len = ch_to_hex(argv[0], (unsigned char *)&topic);
+    if (4 != len)
+        return CLI_OK;
+	topic = ntohl(topic);
+	len = ch_to_hex(argv[1], (unsigned char *)&key);
+    if (4 != len)
+        return CLI_OK;
+	key = ntohl(key);
+	srv_add_g1_fmt(topic, key);
+    return CLI_OK;
+}
+
+extern void srv_del_g1_fmt(unsigned int topic, unsigned int key);
+int cmd_server_del_g1_fmt(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
+{
+	int len;
+	unsigned int topic = 0;
+	unsigned int key = 0;
+	
+    if ((argc >= 1 && strcmp(argv[0], "?") == 0) || argc != 2)
+    {
+        cli_print(cli, "Usage:product topic[hex] fmt key[hex]");
+        return CLI_OK;
+    }
+
+	len = ch_to_hex(argv[0], (unsigned char *)&topic);
+    if (4 != len)
+        return CLI_OK;
+	topic = ntohl(topic);
+	len = ch_to_hex(argv[1], (unsigned char *)&key);
+    if (4 != len)
+        return CLI_OK;
+	key = ntohl(key);
+	srv_del_g1_fmt(topic, key);
+    return CLI_OK;
+}
+
 int cmd_config_edge(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
 {
     cli_set_configmode(cli, MODE_CONFIG_EDGE, "edge");
@@ -460,13 +510,19 @@ int cli_main()
     cli_register_command(cli, NULL, "server", cmd_config_server, PRIVILEGE_UNPRIVILEGED, MODE_EXEC,
                          "Configure edge server");
 	c = cli_register_command(cli, NULL, "product", NULL, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_SERVER, 
-                         "Product add/delete");
+                         "Product add/delete/show");
 	cli_register_command(cli, c, "add", cmd_server_add_pdt, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_SERVER, 
                          "add product");
 	cli_register_command(cli, c, "delete", cmd_server_del_pdt, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_SERVER, 
                          "delete product");
 	cli_register_command(cli, c, "show", cmd_server_show_pdt, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_SERVER, 
                          "show all products");
+	c = cli_register_command(cli, NULL, "packet-fmt", NULL, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_SERVER, 
+                         "packet format add/delete/show");
+	cli_register_command(cli, c, "add", cmd_server_add_g1_fmt, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_SERVER, 
+                         "add packet format");
+	cli_register_command(cli, c, "delete", cmd_server_del_g1_fmt, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_SERVER, 
+                         "delete packet format");
 
     cli_register_command(cli, NULL, "edge", cmd_config_edge, PRIVILEGE_UNPRIVILEGED, MODE_EXEC,
                          "Configure edge client");

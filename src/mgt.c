@@ -12,13 +12,15 @@
 #include "lib_mqtt.h"
 #include "mgt.h"
 #include "pdt.h"
+#include "g1_fmt.h"
 #include "edge_pub.h"
 
 static struct edge_mgt_stat g_edge_mgt_stat;
 
 struct edge_mgt_control g_edge_mgt_ctl = {EDGE_STATUS_OFFLINE, EDGE_FUNC_ON, 0, 240, 3};
 pthread_rwlock_t g_edge_rwlock;
-char *edge_msg[EDGE_PRO_BUTT] = {"Hello", "Acknowledge", "AddProduct", "DelProduct"};
+char *edge_msg[EDGE_PRO_BUTT] = {"Hello", "Acknowledge", "AddProduct", "DelProduct"
+								 "AddPacketFormat", "DelPacketFormat"};
 
 static void mgt_send_msg(unsigned char *msg, unsigned long len)
 {
@@ -99,6 +101,22 @@ static unsigned long mgt_rcv_msg(unsigned char *msg, unsigned long len)
             if (len < sizeof(*del))
                 break;
             del_pdt(ntohl(del->topic));
+            break;
+        }
+		case EDGE_PRO_G1_FMT_ADD:
+        {
+            struct edge_mgt_g1_fmt_add *add = (struct edge_mgt_g1_fmt_add *)msg;
+            if (len < sizeof(*add))
+                break;
+            add_g1_fmt(ntohl(add->topic), ntohl(add->key));
+            break;
+        }
+        case EDGE_PRO_G1_FMT_DEL:
+        {
+            struct edge_mgt_g1_fmt_del *del = (struct edge_mgt_g1_fmt_del *)msg;
+            if (len < sizeof(*del))
+                break;
+            del_g1_fmt(ntohl(del->topic), ntohl(del->key));
             break;
         }
         default:
