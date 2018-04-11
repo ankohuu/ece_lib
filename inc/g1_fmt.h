@@ -14,6 +14,7 @@ struct g1_token
 struct g1_fmt
 {
     unsigned int key;
+    struct edge_pdt *pdt;
 	#if 0
     unsigned char *pkt;
     unsigned long size;
@@ -26,5 +27,6 @@ struct g1_fmt
 extern struct g1_fmt * add_g1_fmt(unsigned int topic, unsigned int key);
 extern struct g1_fmt * get_g1_fmt(struct edge_pdt *pdt, unsigned int key);
 extern void del_g1_fmt(unsigned int topic, unsigned int key);
+extern void hash_del_fmt(hash_map *map, void *key, void *data);
 
 #endif
