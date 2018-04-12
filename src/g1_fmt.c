@@ -50,3 +50,23 @@ struct g1_fmt * get_g1_fmt(struct edge_pdt *pdt, unsigned int key)
 	return hash_map_get(&pdt->fmt_map, (void *)&key);
 }
 
+void show_g1_fmt(struct g1_fmt *fmt)
+{
+    if (NULL == fmt)
+        return;
+    lib_printf("packet fmt topic:0x%x", fmt->key);
+    return;
+}
+
+void hash_show_fmt(hash_map *map, void *key, void *data)
+{
+    struct g1_fmt *fmt = (struct g1_fmt *)data;
+    return show_g1_fmt(fmt);
+}
+
+void show_g1_fmt_map(hash_map *map)
+{
+	hash_map_work(map, hash_show_fmt);
+	return;
+}
+

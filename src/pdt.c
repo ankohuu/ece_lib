@@ -8,6 +8,7 @@
 #include "list.h"
 #include "pdt.h"
 #include "attr.h"
+#include "g1_fmt.h"
 
 static hash_map g_pdt_map;
 
@@ -129,9 +130,9 @@ void show_pdt(struct edge_pdt *pdt)
         return;
     lib_printf("product topic:0x%x endian %s", pdt->topic, 
         (EDGE_BIG_ENDIAN == pdt->endian)?"BIG":"SMALL");
+	show_g1_fmt_map(&pdt->fmt_map);
 #if 0
-	hash_map_work(module->gfs.fmt_map, device_module_show_pkt_fmt);
-    for (next = (pos = (&module->head)->n.next, pos->next); pos != &(&module->head)->n; pos = next, next = pos->next) {
+	for (next = (pos = (&module->head)->n.next, pos->next); pos != &(&module->head)->n; pos = next, next = pos->next) {
         dev = container_of(pos, struct device, list);
         lib_printf("\tdev oid:%s", dev->oid);
     }
