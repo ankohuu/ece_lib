@@ -66,7 +66,7 @@ void del_pdt_attr(struct edge_pdt *pdt, unsigned int topic)
 void hash_show_pdt_attr(hash_map *map, void *key, void *data)
 {
     struct pdt_attr *attr = (struct pdt_attr *)data;
-    lib_printf("attribute topic:0x%x ref:%lu", attr->topic, attr->ref);
+    lib_printf("\t\tattribute topic:0x%8.8x ref:%lu", attr->topic, attr->ref);
     return;
 }
 
@@ -87,7 +87,7 @@ struct edge_pdt *add_pdt(unsigned int topic, enum edge_pdt_endian endian)
     pdt = (struct edge_pdt *)malloc(sizeof(*pdt));
     if (NULL == pdt)
         return NULL;
-    lib_printf("add product topic:0x%x endian:%u", topic, endian);
+    lib_printf("add product topic:0x%8.8x endian:%u", topic, endian);
     pdt->topic = topic;
     pdt->endian = endian;
 
@@ -118,7 +118,7 @@ void del_pdt(unsigned int topic)
 	if (unlikely(NULL == pdt))
 		return;
 
-    lib_printf("del product topic:0x%x", topic);
+    lib_printf("del product topic:0x%8.8x", topic);
 
 	/* down escape */
     hash_map_work(&pdt->fmt_map, hash_del_fmt);
@@ -143,9 +143,10 @@ void show_pdt(struct edge_pdt *pdt)
 {
     if (NULL == pdt)
         return;
-    lib_printf("product topic:0x%x endian %s", pdt->topic, 
+    lib_printf("product topic:0x%8.8x endian %s", pdt->topic, 
         (EDGE_BIG_ENDIAN == pdt->endian)?"BIG":"SMALL");
 	show_g1_fmt_map(&pdt->fmt_map);
+	show_all_pdt_attr(pdt);
 #if 0
 	for (next = (pos = (&module->head)->n.next, pos->next); pos != &(&module->head)->n; pos = next, next = pos->next) {
         dev = container_of(pos, struct device, list);

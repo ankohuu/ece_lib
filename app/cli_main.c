@@ -295,7 +295,7 @@ int cmd_server_add_g1_fmt(struct cli_def *cli, UNUSED(const char *command), char
 	
     if ((argc >= 1 && strcmp(argv[0], "?") == 0) || argc != 2)
     {
-        cli_print(cli, "Usage:product topic[hex] fmt key[hex]");
+        cli_print(cli, "Usage:product topic[hex] fmt_key[hex]");
         return CLI_OK;
     }
 
@@ -320,7 +320,7 @@ int cmd_server_del_g1_fmt(struct cli_def *cli, UNUSED(const char *command), char
 	
     if ((argc >= 1 && strcmp(argv[0], "?") == 0) || argc != 2)
     {
-        cli_print(cli, "Usage:product topic[hex] fmt key[hex]");
+        cli_print(cli, "Usage:product topic[hex] fmt_key[hex]");
         return CLI_OK;
     }
 
@@ -333,6 +333,80 @@ int cmd_server_del_g1_fmt(struct cli_def *cli, UNUSED(const char *command), char
         return CLI_OK;
 	key = ntohl(key);
 	srv_del_g1_fmt(topic, key);
+    return CLI_OK;
+}
+
+extern void srv_add_g1_token(unsigned int topic, unsigned int key, unsigned int token_topic,
+							        unsigned int offset, unsigned int len);
+int cmd_server_add_g1_token(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
+{
+	int len;
+	unsigned int topic = 0;
+	unsigned int key = 0;
+	unsigned int token_topic = 0;
+	unsigned int offset = 0;
+	unsigned int tlen = 0;
+	
+    if ((argc >= 1 && strcmp(argv[0], "?") == 0) || argc != 5)
+    {
+        cli_print(cli, "Usage:product topic[hex] fmt_key[hex] token_key[hex] offset len");
+        return CLI_OK;
+    }
+
+	len = ch_to_hex(argv[0], (unsigned char *)&topic);
+    if (4 != len)
+        return CLI_OK;
+	topic = ntohl(topic);
+	len = ch_to_hex(argv[1], (unsigned char *)&key);
+    if (4 != len)
+        return CLI_OK;
+	key = ntohl(key);
+	len = ch_to_hex(argv[2], (unsigned char *)&token_topic);
+    if (4 != len)
+        return CLI_OK;
+	token_topic = ntohl(token_topic);
+	sscanf(argv[3], "%u", &offset);
+	sscanf(argv[4], "%u", &tlen);
+    if (tlen == 0)
+    	return CLI_OK; 
+	srv_add_g1_token(topic, key, token_topic, offset, tlen);
+    return CLI_OK;
+}
+
+extern void srv_del_g1_token(unsigned int topic, unsigned int key, unsigned int token_topic);
+int cmd_server_del_g1_token(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
+{
+	int len;
+	unsigned int topic = 0;
+	unsigned int key = 0;
+	unsigned int token_topic = 0;
+	
+    if ((argc >= 1 && strcmp(argv[0], "?") == 0) || argc != 3)
+    {
+        cli_print(cli, "Usage:product topic[hex] fmt_key[hex] token_key[hex]");
+        return CLI_OK;
+    }
+
+	len = ch_to_hex(argv[0], (unsigned char *)&topic);
+    if (4 != len)
+        return CLI_OK;
+	topic = ntohl(topic);
+	len = ch_to_hex(argv[1], (unsigned char *)&key);
+    if (4 != len)
+        return CLI_OK;
+	key = ntohl(key);
+	len = ch_to_hex(argv[2], (unsigned char *)&token_topic);
+    if (4 != len)
+        return CLI_OK;
+	token_topic = ntohl(token_topic);
+	srv_del_g1_token(topic, key, token_topic);
+    return CLI_OK;
+}
+
+extern void show_all_attr(void);
+int cmd_server_show_attr(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
+{
+    show_all_attr();
     return CLI_OK;
 }
 
@@ -523,6 +597,14 @@ int cli_main()
                          "add packet format");
 	cli_register_command(cli, c, "delete", cmd_server_del_g1_fmt, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_SERVER, 
                          "delete packet format");
+	c = cli_register_command(cli, NULL, "packet-token", NULL, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_SERVER, 
+                         "packet token add/delete/show");
+	cli_register_command(cli, c, "add", cmd_server_add_g1_token, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_SERVER, 
+                         "add packet token");
+	cli_register_command(cli, c, "delete", cmd_server_del_g1_token, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_SERVER, 
+                         "delete packet token");
+	cli_register_command(cli, NULL, "attr-show", cmd_server_show_attr, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_SERVER, 
+                         "show attributes");
 
     cli_register_command(cli, NULL, "edge", cmd_config_edge, PRIVILEGE_UNPRIVILEGED, MODE_EXEC,
                          "Configure edge client");

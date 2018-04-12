@@ -8,6 +8,7 @@
 int edge_init(void)
 {
     lib_printf("edge lib init");
+	(void)attr_init();
 	(void)pdt_init();
     (void)mgt_init();
     return 0;

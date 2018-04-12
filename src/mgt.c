@@ -20,7 +20,8 @@ static struct edge_mgt_stat g_edge_mgt_stat;
 struct edge_mgt_control g_edge_mgt_ctl = {EDGE_STATUS_OFFLINE, EDGE_FUNC_ON, 0, 240, 3};
 pthread_rwlock_t g_edge_rwlock;
 char *edge_msg[EDGE_PRO_BUTT] = {"Hello", "Acknowledge", "AddProduct", "DelProduct",
-								 "AddPacketFormat", "DelPacketFormat"};
+								 "AddPacketFormat", "DelPacketFormat", 
+								 "AddFormatToken", "DelFormatToken"};
 
 static void mgt_send_msg(unsigned char *msg, unsigned long len)
 {
@@ -117,6 +118,23 @@ static unsigned long mgt_rcv_msg(unsigned char *msg, unsigned long len)
             if (len < sizeof(*del))
                 break;
             del_g1_fmt(ntohl(del->topic), ntohl(del->key));
+            break;
+        }
+		case EDGE_PRO_G1_TOKEN_ADD:
+        {
+            struct edge_mgt_g1_token_add *add = (struct edge_mgt_g1_token_add *)msg;
+            if (len < sizeof(*add))
+                break;
+            add_g1_token(ntohl(add->topic), ntohl(add->key), ntohl(add->token_topic), 
+            		ntohl(add->offset), ntohl(add->len));
+            break;
+        }
+        case EDGE_PRO_G1_TOKEN_DEL:
+        {
+            struct edge_mgt_g1_token_del *del = (struct edge_mgt_g1_token_del *)msg;
+            if (len < sizeof(*del))
+                break;
+            del_g1_token(ntohl(del->topic), ntohl(del->key), ntohl(del->token_topic));
             break;
         }
         default:

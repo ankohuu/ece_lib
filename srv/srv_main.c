@@ -100,6 +100,51 @@ void srv_del_g1_fmt(unsigned int topic, unsigned int key)
 	return;
 }
 
+void srv_add_g1_token(unsigned int topic, unsigned int key, unsigned int token_topic,
+							unsigned int offset, unsigned int len)
+{
+	struct edge_mgt_tlv *tlv;
+	struct edge_mgt_g1_token_add *data;
+	unsigned long mlen = sizeof(*tlv) + sizeof(*data);
+	
+	tlv = malloc(mlen);
+    if (NULL == tlv)
+        return;
+    memset(tlv, 0, mlen);
+    tlv->type = EDGE_PRO_G1_TOKEN_ADD;
+    tlv->len = sizeof(*data);
+    data= (struct edge_mgt_g1_token_add *)tlv->val;
+    data->topic = htonl(topic);
+	data->key = htonl(key);
+	data->token_topic = htonl(token_topic);
+	data->offset = htonl(offset);
+	data->len = htonl(len);
+    srv_send_edge_msg((unsigned char *)tlv, mlen);
+    free(tlv);
+	return;
+}
+
+void srv_del_g1_token(unsigned int topic, unsigned int key, unsigned int token_topic)
+{
+	struct edge_mgt_tlv *tlv;
+	struct edge_mgt_g1_token_del *data;
+	unsigned long len = sizeof(*tlv) + sizeof(*data);
+	
+	tlv = malloc(len);
+    if (NULL == tlv)
+        return;
+    memset(tlv, 0, len);
+    tlv->type = EDGE_PRO_G1_TOKEN_DEL;
+    tlv->len = sizeof(*data);
+    data= (struct edge_mgt_g1_token_del *)tlv->val;
+    data->topic = htonl(topic);
+	data->key = htonl(key);
+	data->token_topic = htonl(token_topic);
+    srv_send_edge_msg((unsigned char *)tlv, len);
+    free(tlv);
+	return;
+}
+
 void rcv_edge_msg(unsigned char *msg, unsigned long len)
 {
     struct edge_mgt_tlv *tlv = (struct edge_mgt_tlv *)msg;

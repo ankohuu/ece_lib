@@ -22,13 +22,13 @@ struct edge_attr *add_attr(unsigned int topic, enum edge_attr_type type, unsigne
         if (unlikely(NULL == attr))
 		    return NULL;
         memset(attr, 0x0, sizeof(*attr));
-        lib_printf("add attribute topic:0x%x type:%u len:%lu", topic, type, len);
+        lib_printf("add attribute topic:0x%8.8x type:%u len:%lu", topic, type, len);
         attr->topic = topic;
         attr->type = type;
         attr->len = len;
         hash_map_put(&g_attr_map, (void *)&attr->topic, (void *)attr);
     } else {
-        lib_printf("attribute topic:0x%x add reference", topic);
+        lib_printf("attribute topic:0x%8.8x add reference", topic);
     }
     attr->ref++;
     return attr;
@@ -51,17 +51,17 @@ void del_attr_ref(unsigned int topic, unsigned long ref)
 	if (attr->ref >= ref) {
 		attr->ref -= ref;
 	} else {
-		lib_printf("del ref error topic:0x%x ref:%lu", topic, ref);
+		lib_printf("del ref error topic:0x%8.8x ref:%lu", topic, ref);
 		attr->ref = 0;
 	}
 
     if (0 == attr->ref) {
-        lib_printf("del attribute topic:0x%x", topic);
+        lib_printf("del attribute topic:0x%8.8x", topic);
 	    hash_map_remove(&g_attr_map, (void *)&topic);
         free(attr);
     }
     else
-        lib_printf("attribute topic:0x%x sub reference %lu", topic, ref);
+        lib_printf("attribute topic:0x%8.8x sub reference %lu", topic, ref);
         
     return;
 }
@@ -75,7 +75,7 @@ void show_attr(struct edge_attr *attr)
 {
     if (NULL == attr)
         return;
-    lib_printf("attribute topic:0x%x type:%s len:%lu reference:%lu", 
+    lib_printf("attribute topic:0x%8.8x type:%s len:%lu reference:%lu", 
             attr->topic, g_attr_str[attr->type], attr->len, attr->ref);
     return;
 }

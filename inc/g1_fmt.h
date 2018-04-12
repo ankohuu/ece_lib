@@ -24,8 +24,10 @@ struct g1_fmt
     /* todo:cmd arg */
 };
 
+extern struct g1_token * add_g1_token(unsigned int topic, unsigned int key, unsigned int token_topic, unsigned long offset, unsigned long len);
+extern void del_g1_token(unsigned int topic, unsigned int key, unsigned int token_topic);
 extern struct g1_fmt * add_g1_fmt(unsigned int topic, unsigned int key);
-extern struct g1_fmt * get_g1_fmt(struct edge_pdt *pdt, unsigned int key);
+extern struct g1_fmt * get_g1_fmt(unsigned int topic, unsigned int key);
 extern void del_g1_fmt(unsigned int topic, unsigned int key);
 extern void hash_del_fmt(hash_map *map, void *key, void *data);
 extern void show_g1_fmt_map(hash_map *map);

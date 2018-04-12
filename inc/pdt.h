@@ -3,6 +3,7 @@
 
 #include "hash_map.h"
 #include "list.h"
+#include "attr.h"
 
 enum edge_pdt_endian
 {
@@ -26,6 +27,8 @@ struct pdt_attr
     unsigned int topic;
 };
 
+extern struct edge_attr * add_pdt_attr(struct edge_pdt *pdt, unsigned int topic, enum edge_attr_type type, unsigned long len);
+extern void del_pdt_attr(struct edge_pdt *pdt, unsigned int topic);
 extern struct edge_pdt *add_pdt(unsigned int topic, enum edge_pdt_endian endian);
 extern struct edge_pdt *get_pdt(unsigned int topic);
 extern void del_pdt(unsigned int topic);
