@@ -337,19 +337,20 @@ int cmd_server_del_g1_fmt(struct cli_def *cli, UNUSED(const char *command), char
 }
 
 extern void srv_add_g1_token(unsigned int topic, unsigned int key, unsigned int token_topic,
-							        unsigned int offset, unsigned int len);
+							        unsigned int type, unsigned int offset, unsigned int len);
 int cmd_server_add_g1_token(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
 {
 	int len;
 	unsigned int topic = 0;
 	unsigned int key = 0;
 	unsigned int token_topic = 0;
+	unsigned int type = 0;
 	unsigned int offset = 0;
 	unsigned int tlen = 0;
 	
-    if ((argc >= 1 && strcmp(argv[0], "?") == 0) || argc != 5)
+    if ((argc >= 1 && strcmp(argv[0], "?") == 0) || argc != 6)
     {
-        cli_print(cli, "Usage:product topic[hex] fmt_key[hex] token_key[hex] offset len");
+        cli_print(cli, "Usage:product topic[hex] fmt_key[hex] token_key[hex] type[0-1] offset len");
         return CLI_OK;
     }
 
@@ -365,11 +366,12 @@ int cmd_server_add_g1_token(struct cli_def *cli, UNUSED(const char *command), ch
     if (4 != len)
         return CLI_OK;
 	token_topic = ntohl(token_topic);
-	sscanf(argv[3], "%u", &offset);
-	sscanf(argv[4], "%u", &tlen);
+	sscanf(argv[3], "%u", &type);
+	sscanf(argv[4], "%u", &offset);
+	sscanf(argv[5], "%u", &tlen);
     if (tlen == 0)
     	return CLI_OK; 
-	srv_add_g1_token(topic, key, token_topic, offset, tlen);
+	srv_add_g1_token(topic, key, token_topic, type, offset, tlen);
     return CLI_OK;
 }
 

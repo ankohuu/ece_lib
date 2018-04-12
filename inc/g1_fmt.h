@@ -1,6 +1,8 @@
 #ifndef __ECE_LIB_G1_FMT_H_
 #define __ECE_LIB_G1_FMT_H_
 
+#include "attr.h"
+
 struct edge_pdt;
 
 struct g1_token
@@ -24,7 +26,7 @@ struct g1_fmt
     /* todo:cmd arg */
 };
 
-extern struct g1_token * add_g1_token(unsigned int topic, unsigned int key, unsigned int token_topic, unsigned long offset, unsigned long len);
+extern struct g1_token * add_g1_token(unsigned int topic, unsigned int key, unsigned int token_topic, enum edge_attr_type type, unsigned long offset, unsigned long len);
 extern void del_g1_token(unsigned int topic, unsigned int key, unsigned int token_topic);
 extern struct g1_fmt * add_g1_fmt(unsigned int topic, unsigned int key);
 extern struct g1_fmt * get_g1_fmt(unsigned int topic, unsigned int key);

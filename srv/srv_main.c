@@ -101,7 +101,7 @@ void srv_del_g1_fmt(unsigned int topic, unsigned int key)
 }
 
 void srv_add_g1_token(unsigned int topic, unsigned int key, unsigned int token_topic,
-							unsigned int offset, unsigned int len)
+							unsigned int type, unsigned int offset, unsigned int len)
 {
 	struct edge_mgt_tlv *tlv;
 	struct edge_mgt_g1_token_add *data;
@@ -117,6 +117,7 @@ void srv_add_g1_token(unsigned int topic, unsigned int key, unsigned int token_t
     data->topic = htonl(topic);
 	data->key = htonl(key);
 	data->token_topic = htonl(token_topic);
+	data->type = htonl(type);
 	data->offset = htonl(offset);
 	data->len = htonl(len);
     srv_send_edge_msg((unsigned char *)tlv, mlen);

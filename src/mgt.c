@@ -126,7 +126,7 @@ static unsigned long mgt_rcv_msg(unsigned char *msg, unsigned long len)
             if (len < sizeof(*add))
                 break;
             add_g1_token(ntohl(add->topic), ntohl(add->key), ntohl(add->token_topic), 
-            		ntohl(add->offset), ntohl(add->len));
+            		ntohl(add->type), ntohl(add->offset), ntohl(add->len));
             break;
         }
         case EDGE_PRO_G1_TOKEN_DEL:

@@ -72,6 +72,7 @@ struct edge_mgt_g1_token_add {
     unsigned int topic;
     unsigned int key;
 	unsigned int token_topic;
+	unsigned int type;
 	unsigned int offset;
 	unsigned int len;
 } __attribute__((packed));
