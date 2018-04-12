@@ -12,7 +12,7 @@
 
 static hash_map g_pdt_map;
 
-struct edge_attr * pdt_add_attr(struct edge_pdt *pdt, unsigned int topic, enum edge_attr_type type, unsigned long len)
+struct edge_attr * add_pdt_attr(struct edge_pdt *pdt, unsigned int topic, enum edge_attr_type type, unsigned long len)
 {
     struct pdt_attr *attr;
     struct edge_attr *eattr;
@@ -41,7 +41,7 @@ struct edge_attr * pdt_add_attr(struct edge_pdt *pdt, unsigned int topic, enum e
     return eattr;
 }
 
-void pdt_del_attr(struct edge_pdt *pdt, unsigned int topic)
+void del_pdt_attr(struct edge_pdt *pdt, unsigned int topic)
 {
     struct pdt_attr *attr;
 
@@ -61,6 +61,19 @@ void pdt_del_attr(struct edge_pdt *pdt, unsigned int topic)
     }
 
     return del_attr(topic);
+}
+
+void hash_show_pdt_attr(hash_map *map, void *key, void *data)
+{
+    struct pdt_attr *attr = (struct pdt_attr *)data;
+    lib_printf("attribute topic:0x%x ref:%lu", attr->topic, attr->ref);
+    return;
+}
+
+void show_all_pdt_attr(struct edge_pdt *pdt)
+{
+    hash_map_work(&pdt->attr_map, hash_show_pdt_attr);
+    return;
 }
 
 struct edge_pdt *add_pdt(unsigned int topic, enum edge_pdt_endian endian)
@@ -106,7 +119,9 @@ void del_pdt(unsigned int topic)
 		return;
 
     lib_printf("del product topic:0x%x", topic);
+
 	/* down escape */
+    hash_map_work(&pdt->fmt_map, hash_del_fmt);
 		//device
 	for (next = (pos = (&pdt->head)->n.next, pos->next); pos != &(&pdt->head)->n; pos = next, next = pos->next) {
         //dev = container_of(pos, struct device, list);
