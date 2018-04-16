@@ -59,7 +59,8 @@ void del_g1_token_internal(struct g1_fmt *fmt, unsigned int topic)
 	struct g1_token *token, **ptr;
 	
 	ptr = &fmt->token;
-	while (NULL != (token = *ptr))  {
+
+	while (NULL != (token = *ptr)) {
         if (topic == token->topic) {
             *ptr = token->next;
             free(token); 
@@ -68,6 +69,7 @@ void del_g1_token_internal(struct g1_fmt *fmt, unsigned int topic)
         }
         ptr = &((*ptr)->next);
     }
+	
 	return;
 }
 
@@ -124,7 +126,9 @@ void del_g1_token(unsigned int topic, unsigned int key, unsigned int token_topic
 	if (unlikely(NULL == fmt))
 		return;
 
+	/* product key */
 	del_pdt_attr(fmt->pdt, token_topic);
+	/* format (db) key */
 	del_g1_token_internal(fmt, token_topic);
 	return;
 }

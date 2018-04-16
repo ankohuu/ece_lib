@@ -15,7 +15,6 @@ struct edge_pdt
 {
 	unsigned int topic;
     unsigned long endian;
-    //struct g1_fmt_set gfs;
     struct list_head head;
     hash_map attr_map;
 	hash_map fmt_map;

@@ -1,5 +1,5 @@
 SUBDIRS=
-OBJECTS=cli.o misc.o mqtt.o hash_map.o linked_list.o memory.o
+OBJECTS=cli.o misc.o md5.o mqtt.o hash_map.o linked_list.o memory.o
 
 # include "make global scripts"
 include ${MAKEINCLUDE}
