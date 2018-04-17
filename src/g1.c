@@ -7,6 +7,8 @@
 
 #include "base_def.h"
 #include "mgt.h"
+#include "dev.h"
+#include "g1_fmt.h"
 #include "g1.h"
 
 static unsigned char h1_len_tbl[] = {6, 8, 16, 20, 0, 4, 0, 0};
@@ -15,16 +17,17 @@ static unsigned char h3_len_tbl[] = {0, 2, 4, 8};
 
 extern pthread_rwlock_t g_edge_rwlock;
 
-static inline unsigned long parse_msg(struct pkt_info *info, unsigned char *pkt, 
-    					                 unsigned long size)
+static inline unsigned long parse_msg(struct dev *dev, struct pkt_info *info, 
+										  unsigned char *pkt, unsigned long size)
 {
-
+	struct g1_fmt *fmt;
     struct g1_msg *msg = (struct g1_msg *)pkt;
+	struct g1_token *token;
 	unsigned long len, i;
     char log[256];
 
     if (sizeof(struct g1_msg) > size)
-		return -1;
+		return G1_STAT_ERR_PKT;
 
 	len = size - sizeof(struct g1_msg);
 	info->key = ntohl(msg->topic);
@@ -38,6 +41,17 @@ static inline unsigned long parse_msg(struct pkt_info *info, unsigned char *pkt,
 	for (i=0; i<info->payload_len; i++)
 		sprintf(log, "%s %2.2x", log, msg->data[i]);
 	lib_printf("payload:%s", log + 1);
+
+	fmt = get_g1_fmt(dev->pdt->topic, info->key);
+	if (NULL != fmt)
+		return G1_STAT_NO_PKT_FMT;
+	token = fmt->token;
+	while (token) {
+		lib_printf("token device topic[%x] offset:%lu len:%lu",
+				token->topic, token->offset, token->len);	
+        (void)upt_dev_attr(dev, token->topic, info->payload + token->offset, token->len);
+		token = token->next;
+	}
 	return 0;
 }
 
@@ -67,9 +81,9 @@ static inline unsigned long parse_address_filed(struct pkt_info *info, unsigned 
     return (size > len)?len:0;
 }
 
-
 static long parse_g1_pkt(struct pkt_info *info)
 {
+	struct dev *dev;
 	unsigned long l, len = 0;
 	struct g1_header *header;
 	char log[256];
@@ -86,7 +100,7 @@ static long parse_g1_pkt(struct pkt_info *info)
 	l = parse_address_filed(info, header->addr_ctrl, header->addr, info->len - len);
     if (unlikely(0 == l)) {
 		lib_printf("wrong addr filed, drop it");
-        return -1;
+        return G1_STAT_ERR_PKT;
     }
     len += l;
 
@@ -111,11 +125,15 @@ static long parse_g1_pkt(struct pkt_info *info)
 		lib_printf("device l3 address:%s", log + 1);	
 	}
 
+	dev = get_dev(info->type, info->h1, info->h1_len + info->h2_len + info->h3_len);
+	if (NULL == dev)
+	{
+		return G1_STAT_NO_DEVICE;
+	}
+	fresh_dev(dev);
+
 	/* message */
-	l = parse_msg(info, info->pkt + len, info->len - len);
-	len += l;
-	
-	return 0;
+	return parse_msg(dev, info, info->pkt + len, info->len - len);
 }
 
 static long edge_dp_rcv(enum edge_access_type type, unsigned long module, unsigned char *pkt, unsigned long size)

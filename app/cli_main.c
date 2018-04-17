@@ -231,7 +231,6 @@ int cmd_wloc_rcv_cli_pkt(struct cli_def *cli, UNUSED(const char *command), char 
     return CLI_OK;
 }
 
-
 int cmd_config_server(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
 {
     cli_set_configmode(cli, MODE_CONFIG_SERVER, "server");
@@ -285,6 +284,56 @@ int cmd_server_show_pdt(struct cli_def *cli, UNUSED(const char *command), char *
     show_all_pdt();
     return CLI_OK;
 }
+
+extern void srv_add_dev(unsigned char *addr, unsigned int addr_len, unsigned int topic, 
+					  unsigned int link_type, unsigned int module);
+
+int cmd_server_add_dev(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
+{
+	unsigned int topic, len, link_type, module;
+	unsigned char addr[64];
+    if ((argc >= 1 && strcmp(argv[0], "?") == 0) || argc != 4)
+    {
+        cli_print(cli, "Usage:addr[hex] topic[hex] link_type module");
+        return CLI_OK;
+    }
+
+	len = ch_to_hex(argv[1], (unsigned char *)&topic);
+    if (4 != len)
+        return CLI_OK;
+	topic = ntohl(topic);
+	memset(addr, 0, 64);
+	len = ch_to_hex(argv[0], addr);
+	sscanf(argv[2], "%u", &link_type);
+    sscanf(argv[3], "%u", &module);       
+	srv_add_dev(addr, len, topic, link_type, module);
+    return CLI_OK;
+}
+
+extern void srv_del_dev(unsigned char *addr, unsigned int addr_len, unsigned int link_type);
+int cmd_server_del_dev(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
+{
+	unsigned int type, len;
+	unsigned char addr[64];
+    if ((argc >= 1 && strcmp(argv[0], "?") == 0) || argc != 2)
+    {
+        cli_print(cli, "Usage:addr[hex] link_type");
+        return CLI_OK;
+    }
+
+	len = ch_to_hex(argv[0], addr);
+    sscanf(argv[1], "%u", &type);
+	srv_del_dev(addr, len, type);
+    return CLI_OK;
+}
+
+extern void show_all_dev(void);
+int cmd_server_show_dev(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
+{
+    show_all_dev();
+    return CLI_OK;
+}
+
 
 extern void srv_add_g1_fmt(unsigned int topic, unsigned int key);
 int cmd_server_add_g1_fmt(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
@@ -554,15 +603,6 @@ int cli_main()
 
     signal(SIGCHLD, SIG_IGN);
 
-    // Prepare a small user context
-
-#if 0
-    char mymessage[] = "I contain user data!";
-    struct my_context myctx;
-    myctx.value = 5;
-    myctx.message = mymessage;
-#endif
-
     cli = cli_init();
     cli_set_banner(cli, "edge compute environment");
     cli_set_hostname(cli, "cli");
@@ -593,6 +633,14 @@ int cli_main()
                          "delete product");
 	cli_register_command(cli, c, "show", cmd_server_show_pdt, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_SERVER, 
                          "show all products");
+	c = cli_register_command(cli, NULL, "device", NULL, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_SERVER, 
+                         "Device add/delete/show");
+	cli_register_command(cli, c, "add", cmd_server_add_dev, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_SERVER, 
+                         "add device");
+	cli_register_command(cli, c, "delete", cmd_server_del_dev, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_SERVER, 
+                         "delete device");
+	cli_register_command(cli, c, "show", cmd_server_show_dev, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_SERVER, 
+                         "show all devices");
 	c = cli_register_command(cli, NULL, "packet-fmt", NULL, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_SERVER, 
                          "packet format add/delete/show");
 	cli_register_command(cli, c, "add", cmd_server_add_g1_fmt, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_SERVER, 
@@ -626,63 +674,8 @@ int cli_main()
                          "change hello packet interval");
     cli_register_command(cli, NULL, "timeout-num", cmd_edge_timeout, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_EDGE, 
                          "change client timeout number");
-#if 0
-    cli_regular(cli, regular_callback);
-    cli_regular_interval(cli, 5); // Defaults to 1 second
-    cli_register_command(cli, NULL, "test", cmd_test, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL);
 
-    cli_register_command(cli, NULL, "simple", NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL);
 
-    cli_register_command(cli, NULL, "simon", NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL);
-
-    cli_register_command(cli, NULL, "set", cmd_set, PRIVILEGE_PRIVILEGED, MODE_EXEC, NULL);
-
-    c = cli_register_command(cli, NULL, "show", NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL);
-
-    cli_register_command(cli, c, "regular", cmd_show_regular, PRIVILEGE_UNPRIVILEGED, MODE_EXEC,
-                         "Show the how many times cli_regular has run");
-
-    cli_register_command(cli, c, "counters", cmd_test, PRIVILEGE_UNPRIVILEGED, MODE_EXEC,
-                         "Show the counters that the system uses");
-
-    cli_register_command(cli, c, "junk", cmd_test, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL);
-
-    cli_register_command(cli, NULL, "interface", cmd_config_int, PRIVILEGE_PRIVILEGED, MODE_EXEC,
-                         "Configure an interface");
-
-    cli_register_command(cli, NULL, "exit", cmd_config_int_exit, PRIVILEGE_PRIVILEGED, MODE_CONFIG_INT,
-                         "Exit from interface configuration");
-
-    cli_register_command(cli, NULL, "address", cmd_test, PRIVILEGE_PRIVILEGED, MODE_CONFIG_INT, "Set IP address");
-    cli_register_command(cli, NULL, "addressa", cmd_test, PRIVILEGE_PRIVILEGED, MODE_CONFIG_INTA, "Set IP address");
-    cli_register_command(cli, NULL, "addressb", cmd_test, PRIVILEGE_PRIVILEGED, MODE_CONFIG_INTB, "Set IP address");
-
-    c = cli_register_command(cli, NULL, "debug", NULL, PRIVILEGE_UNPRIVILEGED, MODE_EXEC, NULL);
-
-    cli_register_command(cli, c, "regular", cmd_debug_regular, PRIVILEGE_UNPRIVILEGED, MODE_EXEC,
-                         "Enable cli_regular() callback debugging");
-
-    // Set user context and its command
-    cli_set_context(cli, (void*)&myctx);
-    cli_register_command(cli, NULL, "context", cmd_context, PRIVILEGE_UNPRIVILEGED, MODE_EXEC,
-                         "Test a user-specified context");
-
-    //cli_set_auth_callback(cli, check_auth);
-    //cli_set_enable_callback(cli, check_enable);
-    // Test reading from a file
-    {
-        FILE *fh;
-
-        if ((fh = fopen("clitest.txt", "r")))
-        {
-            // This sets a callback which just displays the cli_print() text to stdout
-            cli_print_callback(cli, pc);
-            cli_file(cli, fh, PRIVILEGE_UNPRIVILEGED, MODE_EXEC);
-            cli_print_callback(cli, NULL);
-            fclose(fh);
-        }
-    }
-#endif
 
     if ((s = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {

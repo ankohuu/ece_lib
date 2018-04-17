@@ -60,6 +60,53 @@ void srv_del_pdt(unsigned int topic)
 	return;
 }
 
+void srv_add_dev(unsigned char *addr, unsigned int addr_len, unsigned int topic, 
+					  unsigned int link_type, unsigned int module)
+{
+	struct edge_mgt_tlv *tlv;
+	struct edge_mgt_dev_add *data;
+	unsigned long len = sizeof(*tlv) + sizeof(*data);
+	
+	tlv = malloc(len);
+    if (NULL == tlv)
+        return;
+    memset(tlv, 0, len);
+    tlv->type = EDGE_PRO_DEV_ADD;
+    tlv->len = sizeof(*data);
+    data= (struct edge_mgt_dev_add *)tlv->val;
+
+	memcpy(data->addr, addr, addr_len);
+	data->len = htonl(addr_len);
+	data->topic = htonl(topic);
+	data->link_type = htonl(link_type);
+	data->module = htonl(module);
+	
+    srv_send_edge_msg((unsigned char *)tlv, len);
+    free(tlv);
+	return;
+}
+
+void srv_del_dev(unsigned char *addr, unsigned int addr_len, unsigned int link_type)
+{
+	struct edge_mgt_tlv *tlv;
+	struct edge_mgt_dev_del *data;
+	unsigned long len = sizeof(*tlv) + sizeof(*data);
+	
+	tlv = malloc(len);
+    if (NULL == tlv)
+        return;
+    memset(tlv, 0, len);
+    tlv->type = EDGE_PRO_DEV_DEL;
+    tlv->len = sizeof(*data);
+    data = (struct edge_mgt_dev_del *)tlv->val;
+    memcpy(data->addr, addr, addr_len);
+	data->len = htonl(addr_len);
+	data->link_type = htonl(link_type);
+	srv_send_edge_msg((unsigned char *)tlv, len);
+    free(tlv);
+	return;
+}
+
 void srv_add_g1_fmt(unsigned int topic, unsigned int key)
 {
 	struct edge_mgt_tlv *tlv;

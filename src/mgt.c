@@ -12,16 +12,18 @@
 #include "lib_mqtt.h"
 #include "mgt.h"
 #include "pdt.h"
+#include "dev.h"
 #include "g1_fmt.h"
 #include "edge_pub.h"
 
 static struct edge_mgt_stat g_edge_mgt_stat;
 
-struct edge_mgt_control g_edge_mgt_ctl = {EDGE_STATUS_OFFLINE, EDGE_FUNC_ON, 0, 240, 3};
+struct edge_mgt_control g_edge_mgt_ctl = {EDGE_STATUS_OFFLINE, EDGE_FUNC_ON, 0, 240, 3, 1200};
 pthread_rwlock_t g_edge_rwlock;
 char *edge_msg[EDGE_PRO_BUTT] = {"Hello", "Acknowledge", "AddProduct", "DelProduct",
 								 "AddPacketFormat", "DelPacketFormat", 
-								 "AddFormatToken", "DelFormatToken"};
+								 "AddFormatToken", "DelFormatToken", 
+								 "AddDevice", "DelDevice"};
 
 static void mgt_send_msg(unsigned char *msg, unsigned long len)
 {
@@ -137,6 +139,22 @@ static unsigned long mgt_rcv_msg(unsigned char *msg, unsigned long len)
             del_g1_token(ntohl(del->topic), ntohl(del->key), ntohl(del->token_topic));
             break;
         }
+		case EDGE_PRO_DEV_ADD:
+        {
+            struct edge_mgt_dev_add *add = (struct edge_mgt_dev_add *)msg;
+            if (len < sizeof(*add))
+                break;
+            (void)add_dev(ntohl(add->module), add->addr, ntohl(add->len), ntohl(add->link_type), ntohl(add->topic));
+            break;
+        }
+		case EDGE_PRO_DEV_DEL:
+        {
+            struct edge_mgt_dev_del *del = (struct edge_mgt_dev_del *)msg;
+            if (len < sizeof(*del))
+                break;
+            (void)del_dev(ntohl(del->link_type), del->addr, ntohl(del->len));
+            break;
+        }
         default:
             break;
     }
@@ -148,6 +166,7 @@ static unsigned long mgt_rcv_msg(unsigned char *msg, unsigned long len)
 static void do_mgt_periodic(void)
 {
     static unsigned long tick = 0;
+	time_t now = time(NULL);
 
     if (0 == tick%g_edge_mgt_ctl.hello_interval)
         mgt_send_hello_msg();
@@ -157,6 +176,8 @@ static void do_mgt_periodic(void)
         g_edge_mgt_ctl.status = EDGE_STATUS_OFFLINE;
         lib_printf("edge client goes offline");
     }
+
+	do_device_ageing(now);
 
     tick++;
     return;

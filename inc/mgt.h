@@ -27,6 +27,7 @@ struct edge_mgt_control
     unsigned int scenerio_id;
     unsigned int hello_interval;
     unsigned int timeout_num;
+	unsigned int dev_age_interval;
 } __attribute__((packed));
 
 enum edge_mgt_protocol_type
@@ -39,6 +40,8 @@ enum edge_mgt_protocol_type
     EDGE_PRO_G1_FMT_DEL,
     EDGE_PRO_G1_TOKEN_ADD,
     EDGE_PRO_G1_TOKEN_DEL,
+    EDGE_PRO_DEV_ADD,
+    EDGE_PRO_DEV_DEL,
     EDGE_PRO_BUTT,
 };
 
@@ -83,11 +86,30 @@ struct edge_mgt_g1_token_del {
 	unsigned int token_topic;
 } __attribute__((packed));
 
+struct edge_mgt_dev_add {
+    unsigned char addr[64];
+    unsigned int len;
+    unsigned int link_type;
+    unsigned int module;
+	unsigned int topic;
+} __attribute__((packed));
+
+struct edge_mgt_dev_del {
+    unsigned char addr[64];
+    unsigned int len;
+    unsigned int link_type;
+} __attribute__((packed));
+
 extern struct edge_mgt_control g_edge_mgt_ctl;
 
 static inline unsigned int get_edge_function(void)
 {
     return g_edge_mgt_ctl.function;
+}
+
+static inline unsigned int get_dev_age_interval(void)
+{
+    return g_edge_mgt_ctl.dev_age_interval;
 }
 
 extern int mgt_init(void);
