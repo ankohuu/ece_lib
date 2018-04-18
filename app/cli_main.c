@@ -125,6 +125,7 @@ struct pkt
 static struct pkt pkt_array[] = {
     {0, 10, {1,2,3,4,5,6,7,8,9,10}},
     {1, 15, {0x83,0x41,0x20,0xc7,0xdd,0x11,0x10,0x00,0x00,0x02,0x1,0x3,0x0,0xa,0x0}},
+    {1, 15, {0x83,0x41,0x20,0xc7,0xdd,0x11,0x10,0x00,0x00,0x02,0x1,0x3,0x0,0xa,0x1}},
     {2, 33, {
     1,2,3,4,5,6,7,8,9,10,
     1,2,3,4,5,6,7,8,9,10,
@@ -519,6 +520,32 @@ int cmd_edge_timeout(struct cli_def *cli, UNUSED(const char *command), char *arg
     return CLI_OK;
 }
 
+static char *str_up_mode[4] = {"per packet json", "json periodic", "raw packet"};
+int cmd_edge_up_mode(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
+{
+    unsigned int mode, num;
+    if (argc != 2)
+    {
+        cli_print(cli, "up mode %s, interval:%u", 
+					str_up_mode[g_edge_mgt_ctl.up_mode], g_edge_mgt_ctl.up_mode);
+        return CLI_OK;
+    }
+
+    if (strcmp(argv[0], "?") == 0)
+        cli_print(cli, "mode[0-2] interval");
+    else {
+		sscanf(argv[0], "%u", &mode);
+        if (mode < 3) {
+            g_edge_mgt_ctl.up_mode = mode;
+        }
+        sscanf(argv[1], "%u", &num);
+        if (num != 0) {
+            g_edge_mgt_ctl.up_interval = num;
+        }
+    }
+    return CLI_OK;
+}
+
 int cmd_edge_online(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
 {
     client_ctl.status = EDGE_STATUS_ONLINE;
@@ -674,6 +701,8 @@ int cli_main()
                          "change hello packet interval");
     cli_register_command(cli, NULL, "timeout-num", cmd_edge_timeout, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_EDGE, 
                          "change client timeout number");
+	cli_register_command(cli, NULL, "up-mode", cmd_edge_up_mode, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_EDGE, 
+                         "data up mode");
 
 
 

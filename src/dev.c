@@ -4,8 +4,11 @@
 #include <time.h>
 
 #include "md5.h"
+#include "cJSON.h"
+
 #include "base_def.h"
 #include "hash_map.h"
+#include "lib_mqtt.h"
 #include "list.h"
 #include "pdt.h"
 #include "dev.h"
@@ -45,6 +48,7 @@ struct attr_val * add_dev_attr(struct dev *dev, unsigned int topic, unsigned cha
     memset(attr, 0x00, sizeof(*attr));
     attr->len = len;
     attr->topic = topic;
+	attr->dev = dev;
 	if (memcmp(attr->val, val, len)) {
 		memcpy(attr->val, val, len);
 		dev->update_ts = time(NULL);
@@ -128,6 +132,7 @@ static struct dev * __add_dev(struct edge_pdt *pdt, char* oid, unsigned long mod
 	memcpy(dev->oid, oid, 32);
 	dev->module = module;
 	dev->ts = time(NULL);
+	dev->pdt = pdt;
 	hash_map_init(&dev->attr_map, 16, int_cmp, int_hash_func);
 	INIT_LIST_NODE(&dev->list);
 	INIT_LIST_NODE(&dev->age_list);
@@ -219,6 +224,71 @@ void show_all_dev(void)
 {
     hash_map_work(&g_dev_map, hash_show_dev);
     return;
+}
+
+void report_dev_attr(struct dev *dev, struct attr_val *attr)
+{
+    char *out;
+    cJSON *root;
+    char topic[32];
+
+    root = cJSON_CreateObject();
+    if (!root) {
+        lib_printf("cJSON create error!");
+        return;
+    }
+
+    cJSON_AddItemToObject(root, "userID", cJSON_CreateString("lzhouiot"));
+    cJSON_AddItemToObject(root, "OIDIndex", cJSON_CreateString(dev->oid));
+    memset(topic, 0x00, 32);
+    sprintf(topic, "%x", attr->topic);
+    cJSON_AddItemToObject(root, "propertyTopic", cJSON_CreateString(topic));
+    //cJSON_AddItemToObject(root, "value", cJSON_CreateString(attr->str));
+	cJSON_AddItemToObject(root, "value", cJSON_CreateString("test"));
+    cJSON_AddItemToObject(root, "Flag", cJSON_CreateString("GA"));
+    cJSON_AddItemToObject(root, "scenerioID", cJSON_CreateNumber(get_dev_scenerio_id()));
+    
+    out=cJSON_Print(root);
+    send_mqtt_msg(MQTT_OASIS_APP, out, strlen(out));
+    cJSON_Delete(root);    
+    return;
+}
+
+void hash_update_attr(hash_map *map, void *key, void *data)
+{
+    struct attr_val *attr = (struct attr_val *)data;
+	report_dev_attr(attr->dev, attr);
+    return;
+}
+
+void hash_update_dev(hash_map *map, void *key, void *data)
+{
+    struct dev *dev = (struct dev *)data;
+
+	if (dev->update_ts > dev->report_ts) {
+		hash_map_work(&dev->attr_map, hash_update_attr);
+		dev->report_ts = dev->update_ts;
+	}
+    return;
+}
+
+void do_device_update(unsigned long sec)
+{
+	static time_t last_sec = 0;
+
+	time_t now = time(NULL);
+
+	if (0 == last_sec) {
+		last_sec = now;
+		return;
+	}
+
+	if (now - last_sec > get_pkt_up_interval()) {
+		hash_map_work(&g_dev_map, hash_update_dev);
+		last_sec = now;
+	}
+
+	return;
 }
 
 void do_device_ageing(unsigned long sec)

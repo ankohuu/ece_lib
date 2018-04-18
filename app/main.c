@@ -94,7 +94,8 @@ static void app_run(void)
             app_printf("receive a packet from device");
             print_pkt(g_app_pkt_module, g_app_pkt, g_app_pkt_len);
             ret = edge_rcv_pkt(ACCESS_WLOC, g_app_pkt_module, g_app_pkt, g_app_pkt_len);
-            ret = ret;
+            if (0 != ret)
+				app_printf("app send packet to oasis server");
         }
         pthread_mutex_unlock(&g_app_mutex);
     }

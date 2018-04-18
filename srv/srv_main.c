@@ -9,7 +9,7 @@
 #include "lib_misc.h"
 #include "mgt.h"
 #include "pdt.h"
-
+#include "g1.h"
 
 extern char *edge_msg[EDGE_PRO_BUTT];
 struct edge_mgt_control client_ctl = {.status = EDGE_STATUS_ONLINE, .function = EDGE_FUNC_ON, .scenerio_id = 15};
@@ -193,6 +193,8 @@ void srv_del_g1_token(unsigned int topic, unsigned int key, unsigned int token_t
 	return;
 }
 
+extern unsigned long parse_address_filed(struct pkt_info *info, unsigned char addr_ctrl, 
+    						        unsigned char *addr, unsigned long size);
 void rcv_edge_msg(unsigned char *msg, unsigned long len)
 {
     struct edge_mgt_tlv *tlv = (struct edge_mgt_tlv *)msg;
@@ -234,6 +236,29 @@ void rcv_edge_msg(unsigned char *msg, unsigned long len)
             free(tlv);
             break;
         }
+		case EDGE_PRO_PKT:
+        {
+        	struct pkt_info info;
+        	unsigned int status, module, len, topic, key;
+			
+        	struct edge_pkt *pkt = (struct edge_pkt *)(tlv + 1);
+			status = ntohl(pkt->status);
+			module = ntohl(pkt->module);
+			len = ntohl(pkt->len);
+			srv_printf("pkt status:%u module:%u len:%u", status, module, len);
+			(void)parse_address_filed(&info, pkt->pkt[1], pkt->pkt + 2, len);
+
+			topic = *((unsigned int *)info.h1);
+			key = ntohl(*(unsigned int *)(info.h1 + info.h1_len + info.h2_len + info.h3_len));
+
+			srv_add_pdt(topic, 1);
+			srv_add_dev(info.h1, info.h1_len + info.h2_len + info.h3_len , topic, 0, module);
+			srv_add_g1_fmt(topic, key);
+ 			srv_add_g1_token(topic, key, 1, 0, 0, 1);
+			srv_add_g1_token(topic, key, 2, 0, 1, 1);
+			srv_add_g1_token(topic, key, 3, 0, 2, 1);
+        	break;
+        }
         default:
             break;
     }
@@ -247,6 +272,9 @@ static void srv_msg_cb(struct mosquitto *mosq, void *data, const struct mosquitt
     if (msg->payloadlen) {
         if (!strncmp((char *)msg->topic, MQTT_OASIS_EDGE_SERVER_TOPIC, strlen((char *)msg->topic)))
             rcv_edge_msg(msg->payload, msg->payloadlen);
+		else if (!strncmp((char *)msg->topic, MQTT_OASIS_APP, strlen((char *)msg->topic)))
+			srv_printf("oasis app receive\n%s", (char *)msg->payload);
+			
         /* execute commands */
 #if 0
         if (!strncmp((char *)msg->topic, "cmd", strlen((char *)msg->topic)))
@@ -269,7 +297,8 @@ static void srv_cnt_cb(struct mosquitto *mosq, void *data, int res)
     if (!res) {
         /* Subscribe to broker information topics on successful connect. */
         mosquitto_subscribe(mosq, NULL, MQTT_OASIS_EDGE_SERVER_TOPIC, 2);
-    } else {
+		mosquitto_subscribe(mosq, NULL, MQTT_OASIS_APP, 2);
+	} else {
         printf("mosquitto connect failed\n");
     }
     return;

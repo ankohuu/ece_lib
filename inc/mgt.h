@@ -13,6 +13,13 @@ enum edge_mgt_function
     EDGE_FUNC_ON,
 };
 
+enum edge_up_mode
+{
+    EDGE_UP_MODE_ATTR,
+    EDGE_UP_MODE_ATTR_PERIODIC,
+    EDGE_UP_MODE_PKT,
+};
+
 struct edge_mgt_stat
 {
     unsigned char mac[6];
@@ -28,6 +35,16 @@ struct edge_mgt_control
     unsigned int hello_interval;
     unsigned int timeout_num;
 	unsigned int dev_age_interval;
+	unsigned int up_mode;
+	unsigned int up_interval;
+} __attribute__((packed));
+
+struct edge_pkt
+{
+	unsigned int status;
+    unsigned int module;
+    unsigned char pkt[256];
+    unsigned int len;
 } __attribute__((packed));
 
 enum edge_mgt_protocol_type
@@ -42,6 +59,7 @@ enum edge_mgt_protocol_type
     EDGE_PRO_G1_TOKEN_DEL,
     EDGE_PRO_DEV_ADD,
     EDGE_PRO_DEV_DEL,
+    EDGE_PRO_PKT,
     EDGE_PRO_BUTT,
 };
 
@@ -112,6 +130,22 @@ static inline unsigned int get_dev_age_interval(void)
     return g_edge_mgt_ctl.dev_age_interval;
 }
 
+static inline unsigned int get_dev_scenerio_id(void)
+{
+    return g_edge_mgt_ctl.scenerio_id;
+}
+
+static inline unsigned int get_pkt_up_mode(void)
+{
+	return g_edge_mgt_ctl.up_mode;
+}
+
+static inline unsigned int get_pkt_up_interval(void)
+{
+	return g_edge_mgt_ctl.up_interval;
+}
+
+extern unsigned long mgt_send_pkt(unsigned int status, unsigned int module, unsigned char *pkt, unsigned int len);
 extern int mgt_init(void);
 
 #endif

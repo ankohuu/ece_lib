@@ -21,6 +21,7 @@ static inline unsigned long parse_msg(struct dev *dev, struct pkt_info *info,
 										  unsigned char *pkt, unsigned long size)
 {
 	struct g1_fmt *fmt;
+	struct attr_val *attr;
     struct g1_msg *msg = (struct g1_msg *)pkt;
 	struct g1_token *token;
 	unsigned long len, i;
@@ -43,19 +44,21 @@ static inline unsigned long parse_msg(struct dev *dev, struct pkt_info *info,
 	lib_printf("payload:%s", log + 1);
 
 	fmt = get_g1_fmt(dev->pdt->topic, info->key);
-	if (NULL != fmt)
+	if (NULL == fmt)
 		return G1_STAT_NO_PKT_FMT;
 	token = fmt->token;
 	while (token) {
 		lib_printf("token device topic[%x] offset:%lu len:%lu",
 				token->topic, token->offset, token->len);	
-        (void)upt_dev_attr(dev, token->topic, info->payload + token->offset, token->len);
+        attr = upt_dev_attr(dev, token->topic, info->payload + token->offset, token->len);
+		if (NULL != attr && EDGE_UP_MODE_ATTR == get_pkt_up_mode())
+			report_dev_attr(dev, attr);
 		token = token->next;
 	}
 	return 0;
 }
 
-static inline unsigned long parse_address_filed(struct pkt_info *info, unsigned char addr_ctrl, 
+unsigned long parse_address_filed(struct pkt_info *info, unsigned char addr_ctrl, 
     						        unsigned char *addr, unsigned long size)
 {
     unsigned long type = (addr_ctrl & 0xC0) >> 6;
@@ -139,6 +142,7 @@ static long parse_g1_pkt(struct pkt_info *info)
 static long edge_dp_rcv(enum edge_access_type type, unsigned long module, unsigned char *pkt, unsigned long size)
 {
 	struct pkt_info info;
+	long lret;
 
 	/* record */
 
@@ -152,7 +156,11 @@ static long edge_dp_rcv(enum edge_access_type type, unsigned long module, unsign
 	info.pkt = pkt;
 	info.len = size;
 
-    return parse_g1_pkt(&info);
+    lret = parse_g1_pkt(&info);
+	if (0 != lret)
+		mgt_send_pkt(lret, module, pkt, size);
+	
+	return lret;
 }
 
 long edge_rcv_pkt(enum edge_access_type type, unsigned long module, unsigned char *pkt, unsigned long size)
@@ -169,5 +177,7 @@ long edge_rcv_pkt(enum edge_access_type type, unsigned long module, unsigned cha
     lret = edge_dp_rcv(type, module, pkt, size);    
     pthread_rwlock_unlock(&g_edge_rwlock);
 
+	if (0 == lret && EDGE_UP_MODE_PKT == get_pkt_up_mode())
+		lret = G1_STAT_RAW_PKT;
     return lret;
 }

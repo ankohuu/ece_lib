@@ -18,14 +18,15 @@
 
 static struct edge_mgt_stat g_edge_mgt_stat;
 
-struct edge_mgt_control g_edge_mgt_ctl = {EDGE_STATUS_OFFLINE, EDGE_FUNC_ON, 0, 240, 3, 1200};
+struct edge_mgt_control g_edge_mgt_ctl = {EDGE_STATUS_OFFLINE, EDGE_FUNC_ON, 0, 240, 
+										  3, 1200, EDGE_UP_MODE_ATTR_PERIODIC, 10};
 pthread_rwlock_t g_edge_rwlock;
 char *edge_msg[EDGE_PRO_BUTT] = {"Hello", "Acknowledge", "AddProduct", "DelProduct",
 								 "AddPacketFormat", "DelPacketFormat", 
 								 "AddFormatToken", "DelFormatToken", 
-								 "AddDevice", "DelDevice"};
+								 "AddDevice", "DelDevice", "Packet"};
 
-static void mgt_send_msg(unsigned char *msg, unsigned long len)
+void mgt_send_msg(unsigned char *msg, unsigned long len)
 {
     send_mqtt_msg(MQTT_OASIS_EDGE_SERVER_TOPIC, (void *)msg, len);
     return;
@@ -55,6 +56,29 @@ static unsigned long mgt_send_hello_msg(void)
     if (EDGE_STATUS_ONLINE == g_edge_mgt_ctl.status)
         g_edge_mgt_stat.timeout++;
     
+    free(tlv);
+    return 0;
+}
+
+unsigned long mgt_send_pkt(unsigned int status, unsigned int module, 
+								unsigned char *data, unsigned int len)
+{
+    struct edge_mgt_tlv *tlv; 
+    struct edge_pkt *pkt;
+    
+    tlv = malloc(sizeof(*tlv) + sizeof(*pkt));
+    if (NULL == tlv)
+        return 1;
+
+    tlv->type = EDGE_PRO_PKT;
+    tlv->len = sizeof(*pkt);
+    pkt = (struct edge_pkt *)tlv->val;
+    pkt->status = htonl(status);
+    pkt->module = htonl(module);
+	pkt->len = htonl(len);
+    memcpy(pkt->pkt, data, len);
+
+    mgt_send_msg((unsigned char *)tlv, sizeof(*tlv) + sizeof(*pkt));
     free(tlv);
     return 0;
 }
@@ -178,6 +202,8 @@ static void do_mgt_periodic(void)
     }
 
 	do_device_ageing(now);
+	if (EDGE_UP_MODE_ATTR_PERIODIC == get_pkt_up_mode())
+		do_device_update(now);
 
     tick++;
     return;

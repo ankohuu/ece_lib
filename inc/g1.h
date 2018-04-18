@@ -8,6 +8,7 @@ enum g1_process_status
     G1_STAT_ERR_PKT,
     G1_STAT_NO_DEVICE,
     G1_STAT_NO_PKT_FMT,
+    G1_STAT_RAW_PKT,
     G1_STAT_BUTT,
 };
 
