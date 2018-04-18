@@ -45,5 +45,6 @@ extern void do_device_ageing(unsigned long sec);
 extern void fresh_dev(struct dev *dev);
 extern void report_dev_attr(struct dev *dev, struct attr_val *attr);
 extern void do_device_update(unsigned long sec);
+extern void check_rule_engine(struct dev * dev);
 
 #endif

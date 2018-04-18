@@ -55,6 +55,9 @@ static inline unsigned long parse_msg(struct dev *dev, struct pkt_info *info,
 			report_dev_attr(dev, attr);
 		token = token->next;
 	}
+
+	/* rule engine */
+	check_rule_engine(dev);
 	return 0;
 }
 

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <arpa/inet.h>
 
 #include "base_def.h"
 #include "hash_map.h"
@@ -8,6 +9,45 @@
 
 static hash_map g_attr_map;
 static char *g_attr_str[EDGE_ATTR_BUTT] = {"Number", "String"};
+
+void num_to_value(unsigned char *data, unsigned long len, void *pnum)
+{
+    unsigned long num = 0;
+    printf("num to value functions call\r\n");
+    if (NULL == data || 0 ==len || NULL == pnum)
+        return;
+    
+    if (1 == len)
+        num = *data;
+    else if (2 == len)
+        num = ntohs(*(unsigned short *)data);
+    else if (4 == len)
+        num = ntohl(*(unsigned int *)data);
+    *(unsigned long *)pnum = num;
+    return;
+}
+
+void num_to_string(unsigned char *data, unsigned long len, char *res)
+{
+    unsigned long num;
+    printf("num to string functions call\r\n");
+    if (NULL == data || 0 ==len || NULL == res)
+        return;
+    
+    num_to_value(data, len, &num);
+    sprintf(res, "%lu", num);
+    printf("res:%s\r\n", res);
+    return;
+}
+
+struct attr_operations g_attr_operations_array[EDGE_ATTR_BUTT]
+         = {
+            {
+                num_to_value,
+                num_to_string
+            },
+            {NULL}
+           };
 
 struct edge_attr *add_attr(unsigned int topic, enum edge_attr_type type, unsigned long len)
 {

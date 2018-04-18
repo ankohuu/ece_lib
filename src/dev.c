@@ -10,11 +10,13 @@
 #include "hash_map.h"
 #include "lib_mqtt.h"
 #include "list.h"
+#include "expr.h"
 #include "pdt.h"
 #include "dev.h"
 #include "mgt.h"
+#include "attr.h"
 
-
+static char rule_buf[512];
 static hash_map g_dev_map;
 static struct list_head g_dev_age_head;
 
@@ -38,6 +40,7 @@ void get_dev_oid(enum edge_access_type type, unsigned char *addr, unsigned long 
 struct attr_val * add_dev_attr(struct dev *dev, unsigned int topic, unsigned char *val, unsigned long len)
 {
     struct attr_val *attr = 0;
+	struct edge_attr *ea = NULL;
 
     if (NULL == dev || 0 == topic || NULL == val || 0 == len)
         return NULL;
@@ -49,10 +52,13 @@ struct attr_val * add_dev_attr(struct dev *dev, unsigned int topic, unsigned cha
     attr->len = len;
     attr->topic = topic;
 	attr->dev = dev;
+	memset(attr->val, 0xFF, MAX_DEVICE_ATTRIBUTE_LEN);
 	if (memcmp(attr->val, val, len)) {
 		memcpy(attr->val, val, len);
 		dev->update_ts = time(NULL);
-		//GET_TOKEN_OPERATIONS(token_type_num).to_string(val, len, attr->str);
+		ea = get_attr(topic);
+		if (NULL != ea)
+			GET_ATTR_OPERATIONS(ea->type).to_string(val, len, attr->str);
 	}
 	hash_map_put(&dev->attr_map, (void *)&attr->topic, (void *)attr);
 	lib_printf("add_dev_attr topic:%8.8x", topic);
@@ -62,6 +68,7 @@ struct attr_val * add_dev_attr(struct dev *dev, unsigned int topic, unsigned cha
 struct attr_val * upt_dev_attr(struct dev *dev, unsigned int topic, unsigned char *val, unsigned long len)
 {
     struct attr_val *attr;
+	struct edge_attr *ea = NULL;
 
     if (NULL == dev || 0 == topic || NULL == val || 0 == len)
         return NULL;
@@ -75,7 +82,9 @@ struct attr_val * upt_dev_attr(struct dev *dev, unsigned int topic, unsigned cha
         if (memcmp(attr->val, val, len)) {
             memcpy(attr->val, val, len);
             dev->update_ts = dev->ts;
-            //GET_TOKEN_OPERATIONS(token_type_num).to_string(val, len, attr->str);
+			ea = get_attr(topic);
+			if (NULL != ea)
+				GET_ATTR_OPERATIONS(ea->type).to_string(val, len, attr->str);
         }
     }
 
@@ -243,9 +252,8 @@ void report_dev_attr(struct dev *dev, struct attr_val *attr)
     memset(topic, 0x00, 32);
     sprintf(topic, "%x", attr->topic);
     cJSON_AddItemToObject(root, "propertyTopic", cJSON_CreateString(topic));
-    //cJSON_AddItemToObject(root, "value", cJSON_CreateString(attr->str));
-	cJSON_AddItemToObject(root, "value", cJSON_CreateString("test"));
-    cJSON_AddItemToObject(root, "Flag", cJSON_CreateString("GA"));
+    cJSON_AddItemToObject(root, "value", cJSON_CreateString(attr->str));
+	cJSON_AddItemToObject(root, "Flag", cJSON_CreateString("GA"));
     cJSON_AddItemToObject(root, "scenerioID", cJSON_CreateNumber(get_dev_scenerio_id()));
     
     out=cJSON_Print(root);
@@ -315,6 +323,40 @@ void do_device_ageing(unsigned long sec)
 		last_sec = now;
 	}
 
+	return;
+}
+
+
+void hash_get_attr_val(hash_map *map, void *key, void *data)
+{
+    struct attr_val *attr = (struct attr_val *)data;
+	sprintf(rule_buf, "%sa%8.8x=%s,", rule_buf, attr->topic, attr->str);
+	return;
+}
+
+void check_rule_engine(struct dev * dev)
+{
+	struct expr_var_list vars = {0};
+	struct expr_func user_funcs[] = {{0}};
+	if (dev->update_ts <= dev->report_ts)
+	{
+		return;	
+	}
+	
+	memset(rule_buf, 0x00, sizeof(rule_buf));
+	hash_map_work(&dev->attr_map, hash_get_attr_val);
+	strcat(rule_buf, "a00000002 + a00000001 + a00000003");
+	printf("rule engine [%s]\n", rule_buf);
+	struct expr *e = expr_create(rule_buf, strlen(rule_buf), &vars, user_funcs);
+  	if (e == NULL) {
+    	printf("Syntax error\n");
+    	return;
+  	}
+
+  	float result = expr_eval(e);
+  	printf("result: %f\n", result);
+
+  	expr_destroy(e, &vars);
 	return;
 }
 
