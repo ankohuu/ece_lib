@@ -1,7 +1,11 @@
 #include <stdio.h>
+#include <arpa/inet.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <lua.h>
+#include <lauxlib.h>
+#include <lualib.h>
 
 #include "md5.h"
 #include "cJSON.h"
@@ -15,8 +19,11 @@
 #include "dev.h"
 #include "mgt.h"
 #include "attr.h"
+#include "g1.h"
+#include "g1_fmt.h"
 
 static char rule_buf[512];
+static char lua_buf[512];
 static hash_map g_dev_map;
 static struct list_head g_dev_age_head;
 
@@ -330,21 +337,59 @@ void hash_get_attr_val(hash_map *map, void *key, void *data)
 {
     struct attr_val *attr = (struct attr_val *)data;
 	sprintf(rule_buf, "%sa%8.8x=%s,", rule_buf, attr->topic, attr->str);
+	sprintf(lua_buf, "%sa%8.8x=%s\n", lua_buf, attr->topic, attr->str);
 	return;
+}
+
+long send_pkt_to_device(struct dev * dev, unsigned int key, unsigned char *data)
+{
+    unsigned char pkt[256];
+    unsigned char addr[] = {0x20, 0xc7, 0xdd, 0x11};
+    struct g1_fmt *fmt;    
+
+    if (NULL == dev || NULL == data)
+        return 1;
+
+    fmt = get_g1_fmt(dev->pdt->topic, key);
+    if (NULL == fmt) {
+        lib_printf("packet fmt send not success\n");
+        return 1;
+    }
+
+    memset(pkt, 0x00, 256);
+    //len = package_g1_header(p, 0x30, addr, addr_len);
+    struct g1_header *header = (struct g1_header *)pkt;
+    header->msg_type = 0x83;
+    header->addr_ctrl = 0x41;
+    memcpy(header->addr, addr, 4);
+
+    struct g1_msg *msg = (struct g1_msg *)(header->addr + 4);
+    msg->did = 0x01;
+    msg->topic = htonl(key);
+    msg->len = fmt->pkt_len;
+    memcpy(msg->data, fmt->pkt, fmt->size);
+    memcpy(msg->data + fmt->offset, data, fmt->len);
+    app_snd(dev->module, pkt, sizeof(*header) + sizeof(*msg) + 4 + fmt->pkt_len);
+
+    return 0;
 }
 
 void check_rule_engine(struct dev * dev)
 {
 	struct expr_var_list vars = {0};
 	struct expr_func user_funcs[] = {{0}};
+    const float EPSINON = 0.00001; 
 	if (dev->update_ts <= dev->report_ts)
 	{
 		return;	
 	}
 	
 	memset(rule_buf, 0x00, sizeof(rule_buf));
+	memset(lua_buf, 0x00, sizeof(lua_buf));
 	hash_map_work(&dev->attr_map, hash_get_attr_val);
-	strcat(rule_buf, "a00000002 + a00000001 + a00000003");
+	strcat(rule_buf, "(a00000002 + a00000001 + a00000003)>1");
+
+/* expr */
 	printf("rule engine [%s]\n", rule_buf);
 	struct expr *e = expr_create(rule_buf, strlen(rule_buf), &vars, user_funcs);
   	if (e == NULL) {
@@ -353,9 +398,31 @@ void check_rule_engine(struct dev * dev)
   	}
 
   	float result = expr_eval(e);
-  	printf("result: %f\n", result);
+  	//printf("result: %f\n", result);
 
+    if ((result >= - EPSINON) && (result <= EPSINON))
+        lib_printf("failed");
+    else {
+        unsigned char val[3] = {0xFF, 0xFF, 0xFE};
+        lib_printf("passed");
+        send_pkt_to_device(dev, 0x10000002, val);
+    }
+        
   	expr_destroy(e, &vars);
+
+/* lua */
+    lua_State *L = lua_open();
+    L = luaL_newstate();
+    luaL_openlibs(L);
+    strcat(lua_buf, " function test()\n print(a00000001 + a00000002 + a00000003)\n return 1 \nend");
+    luaL_dostring(L, lua_buf);
+    lua_getglobal(L, "test");
+    lua_pcall(L, 0,1,0);
+    if (0 == lua_tointeger(L,-1))
+        lib_printf("failed");
+    else
+        lib_printf("passed");
+
 	return;
 }
 

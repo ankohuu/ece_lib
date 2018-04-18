@@ -31,6 +31,8 @@ long app_snd(unsigned long module, unsigned char *pkt, unsigned long len)
 	return 0;
 }
 
+
+
 static inline unsigned long parse_msg(struct dev *dev, struct pkt_info *info, 
 										  unsigned char *pkt, unsigned long size)
 {
