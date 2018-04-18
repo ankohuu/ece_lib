@@ -14,8 +14,22 @@
 static unsigned char h1_len_tbl[] = {6, 8, 16, 20, 0, 4, 0, 0};
 static unsigned char h2_len_tbl[] = {0, 2, 4, 8};
 static unsigned char h3_len_tbl[] = {0, 2, 4, 8};
+static app_snd_func app_snd_ptr;
 
 extern pthread_rwlock_t g_edge_rwlock;
+
+void reg_app_snd(app_snd_func func)
+{
+	app_snd_ptr = func;
+	return;
+}
+
+long app_snd(unsigned long module, unsigned char *pkt, unsigned long len)
+{
+	if (NULL != app_snd_ptr)
+		return (*app_snd_ptr)(module, pkt, len);
+	return 0;
+}
 
 static inline unsigned long parse_msg(struct dev *dev, struct pkt_info *info, 
 										  unsigned char *pkt, unsigned long size)

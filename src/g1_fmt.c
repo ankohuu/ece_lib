@@ -38,7 +38,7 @@ struct g1_token * add_g1_token_internal(struct g1_fmt *fmt, unsigned int token_t
         ptr = &((*ptr)->next);
     }
 
-    if (NULL == res && offset >= offset1 + len1 && offset + len <= 10000 /* fmt->size */)  {
+    if (NULL == res && offset >= offset1 + len1 && offset + len <= fmt->size)  {
         res = ptr;
     }
 
@@ -133,7 +133,8 @@ void del_g1_token(unsigned int topic, unsigned int key, unsigned int token_topic
 	return;
 }
 
-struct g1_fmt * add_g1_fmt(unsigned int topic, unsigned int key)
+struct g1_fmt * add_g1_fmt(unsigned int topic, unsigned int key, unsigned long size, unsigned char *pkt, 
+					           unsigned long pkt_len, unsigned long offset, unsigned long len)
 {
     struct g1_fmt *fmt;
 	struct edge_pdt *pdt = get_pdt(topic);
@@ -147,7 +148,13 @@ struct g1_fmt * add_g1_fmt(unsigned int topic, unsigned int key)
 	memset(fmt, 0x00, sizeof(*fmt));
     fmt->key = key;
     fmt->pdt = pdt;
+	fmt->size = size;
+	memcpy(fmt->pkt, pkt, pkt_len);
+	fmt->pkt_len = pkt_len;
+	fmt->offset = offset;
+	fmt->len = len;
   	lib_printf("product 0x%8.8x add g1 packet format key:0x%8.8x", topic, key);
+	lib_printf("size:%lu pkt len:%lu offset:%lu len:%lu", size, pkt_len, offset, len);
 	hash_map_put(&pdt->fmt_map, (void *)&fmt->key, (void *)fmt);
 	return fmt; 
 }

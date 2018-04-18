@@ -102,7 +102,16 @@ static void app_run(void)
     return;
 }
 
+long app_send_pkt(unsigned long module, unsigned char *pkt, unsigned long len)
+{
+	app_printf("app snd packet to module %lu", module);
+	print_pkt(module, pkt, len);
+	return 0;
+}
+
+typedef long (*app_snd_func)(unsigned long module, unsigned char *pkt, unsigned long len);
 extern int srv_init(void);
+extern void reg_app_snd(app_snd_func func);
 
 int
 main()
@@ -116,6 +125,7 @@ main()
     /* initcalls */
     mosquitto_lib_init();
     (void)edge_init();
+	reg_app_snd(app_send_pkt);
 
     /* functions */
 #if 0

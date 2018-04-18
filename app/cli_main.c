@@ -357,7 +357,7 @@ int cmd_server_add_g1_fmt(struct cli_def *cli, UNUSED(const char *command), char
     if (4 != len)
         return CLI_OK;
 	key = ntohl(key);
-	srv_add_g1_fmt(topic, key);
+	//srv_add_g1_fmt(topic, key);
     return CLI_OK;
 }
 

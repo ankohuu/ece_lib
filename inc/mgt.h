@@ -81,8 +81,13 @@ struct edge_mgt_pdt_del {
 } __attribute__((packed));
 
 struct edge_mgt_g1_fmt_add {
+	unsigned char pkt[64];
+	unsigned int pkt_len;
     unsigned int topic;
     unsigned int key;
+	unsigned int size;
+	unsigned int offset;
+	unsigned int len;
 } __attribute__((packed));
 
 struct edge_mgt_g1_fmt_del {

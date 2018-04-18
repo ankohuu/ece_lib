@@ -135,7 +135,8 @@ static unsigned long mgt_rcv_msg(unsigned char *msg, unsigned long len)
             struct edge_mgt_g1_fmt_add *add = (struct edge_mgt_g1_fmt_add *)msg;
             if (len < sizeof(*add))
                 break;
-            add_g1_fmt(ntohl(add->topic), ntohl(add->key));
+            add_g1_fmt(ntohl(add->topic), ntohl(add->key), ntohl(add->size), add->pkt, ntohl(add->pkt_len),
+            			ntohl(add->offset), ntohl(add->len));
             break;
         }
         case EDGE_PRO_G1_FMT_DEL:

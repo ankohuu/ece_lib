@@ -63,4 +63,8 @@ struct g1_pkt_in_file
 #define G1_PKT_RECORD_FILE "/tmp/pkt_db"
 #define G1_PKT_FILE_SIZE 2*1024*1024
 
+typedef long (*app_snd_func)(unsigned long module, unsigned char *pkt, unsigned long len);
+extern void reg_app_snd(app_snd_func func);
+extern long app_snd(unsigned long module, unsigned char *pkt, unsigned long len);
+
 #endif

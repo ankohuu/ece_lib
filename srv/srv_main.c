@@ -107,7 +107,8 @@ void srv_del_dev(unsigned char *addr, unsigned int addr_len, unsigned int link_t
 	return;
 }
 
-void srv_add_g1_fmt(unsigned int topic, unsigned int key)
+void srv_add_g1_fmt(unsigned int topic, unsigned int key, unsigned long size, 
+					   unsigned char *pkt, unsigned long pkt_len, unsigned long offset, unsigned long attr_len)
 {
 	struct edge_mgt_tlv *tlv;
 	struct edge_mgt_g1_fmt_add *data;
@@ -122,6 +123,11 @@ void srv_add_g1_fmt(unsigned int topic, unsigned int key)
     data= (struct edge_mgt_g1_fmt_add *)tlv->val;
     data->topic = htonl(topic);
 	data->key = htonl(key);
+	data->size = htonl(size);
+	memcpy(data->pkt, pkt, pkt_len);
+	data->pkt_len = htonl(pkt_len);
+	data->offset = htonl(offset);
+	data->len = htonl(attr_len);
     srv_send_edge_msg((unsigned char *)tlv, len);
     free(tlv);
 	return;
@@ -239,6 +245,7 @@ void rcv_edge_msg(unsigned char *msg, unsigned long len)
 		case EDGE_PRO_PKT:
         {
         	struct pkt_info info;
+			unsigned char data[10] = {1,2,3,4,5};
         	unsigned int status, module, len, topic, key;
 			
         	struct edge_pkt *pkt = (struct edge_pkt *)(tlv + 1);
@@ -253,7 +260,7 @@ void rcv_edge_msg(unsigned char *msg, unsigned long len)
 
 			srv_add_pdt(topic, 1);
 			srv_add_dev(info.h1, info.h1_len + info.h2_len + info.h3_len , topic, 0, module);
-			srv_add_g1_fmt(topic, key);
+			srv_add_g1_fmt(topic, key, 10, data, 5, 1, 3);
  			srv_add_g1_token(topic, key, 1, 0, 0, 1);
 			srv_add_g1_token(topic, key, 2, 0, 1, 1);
 			srv_add_g1_token(topic, key, 3, 0, 2, 1);
