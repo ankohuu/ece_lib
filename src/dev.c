@@ -326,7 +326,6 @@ void do_device_ageing(unsigned long sec)
 	return;
 }
 
-
 void hash_get_attr_val(hash_map *map, void *key, void *data)
 {
     struct attr_val *attr = (struct attr_val *)data;

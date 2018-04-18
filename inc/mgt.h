@@ -37,6 +37,7 @@ struct edge_mgt_control
 	unsigned int dev_age_interval;
 	unsigned int up_mode;
 	unsigned int up_interval;
+	unsigned int pkt_record;
 } __attribute__((packed));
 
 struct edge_pkt
@@ -143,6 +144,11 @@ static inline unsigned int get_pkt_up_mode(void)
 static inline unsigned int get_pkt_up_interval(void)
 {
 	return g_edge_mgt_ctl.up_interval;
+}
+
+static inline unsigned int get_pkt_record(void)
+{
+	return g_edge_mgt_ctl.pkt_record;
 }
 
 extern unsigned long mgt_send_pkt(unsigned int status, unsigned int module, unsigned char *pkt, unsigned int len);

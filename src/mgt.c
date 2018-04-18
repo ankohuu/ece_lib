@@ -19,7 +19,7 @@
 static struct edge_mgt_stat g_edge_mgt_stat;
 
 struct edge_mgt_control g_edge_mgt_ctl = {EDGE_STATUS_OFFLINE, EDGE_FUNC_ON, 0, 240, 
-										  3, 1200, EDGE_UP_MODE_ATTR_PERIODIC, 10};
+										  3, 1200, EDGE_UP_MODE_ATTR_PERIODIC, 10, EDGE_FUNC_OFF};
 pthread_rwlock_t g_edge_rwlock;
 char *edge_msg[EDGE_PRO_BUTT] = {"Hello", "Acknowledge", "AddProduct", "DelProduct",
 								 "AddPacketFormat", "DelPacketFormat", 

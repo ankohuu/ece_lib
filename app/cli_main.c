@@ -558,6 +558,24 @@ int cmd_edge_offline(struct cli_def *cli, UNUSED(const char *command), char *arg
     return CLI_OK;
 }
 
+int cmd_edge_pkt_record(struct cli_def *cli, UNUSED(const char *command), char *argv[], int argc)
+{
+	unsigned int on;
+    if (argc != 1)
+    {
+        cli_print(cli, "[1 on 0 off]");
+        return CLI_OK;
+    }
+
+    if (strcmp(argv[0], "?") == 0)
+        cli_print(cli, "[1 on 0 off]");
+    else {
+		sscanf(argv[0], "%u", &on);
+    }
+    g_edge_mgt_ctl.pkt_record = (on == 0)?0:1;
+    return CLI_OK;
+}
+
 int cmd_config_int_exit(struct cli_def *cli, UNUSED(const char *command), UNUSED(char *argv[]), UNUSED(int argc))
 {
     cli_set_configmode(cli, MODE_CONFIG, NULL);
@@ -703,6 +721,8 @@ int cli_main()
                          "change client timeout number");
 	cli_register_command(cli, NULL, "up-mode", cmd_edge_up_mode, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_EDGE, 
                          "data up mode");
+	c = cli_register_command(cli, NULL, "pkt-record", cmd_edge_pkt_record, PRIVILEGE_UNPRIVILEGED, MODE_CONFIG_EDGE, 
+                         "Record packet on/off");
 
 
 

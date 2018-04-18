@@ -52,4 +52,15 @@ struct pkt_info
 
 };
 
+struct g1_pkt_in_file
+{
+    unsigned int module;
+	unsigned int access_type;
+	unsigned int len;
+	unsigned char *pkt;
+} __attribute__((packed));
+
+#define G1_PKT_RECORD_FILE "/tmp/pkt_db"
+#define G1_PKT_FILE_SIZE 2*1024*1024
+
 #endif

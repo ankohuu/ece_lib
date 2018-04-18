@@ -142,13 +142,34 @@ static long parse_g1_pkt(struct pkt_info *info)
 	return parse_msg(dev, info, info->pkt + len, info->len - len);
 }
 
+static void record_g1_pkt(enum edge_access_type type, unsigned long module, unsigned char *pkt, unsigned long size)
+{
+	FILE *fp;
+	struct g1_pkt_in_file header;
+	lib_printf("record packet in files -%s-, type:%u module:%lu", 
+                    G1_PKT_RECORD_FILE, type, module);
+
+	header.access_type = htonl(type);
+	header.module = htonl(module);
+	header.len = htonl(size);
+	fp = fopen(G1_PKT_RECORD_FILE, "a+");
+	fwrite(&header, 1, sizeof(struct g1_pkt_in_file), fp);
+	fwrite(pkt, 1, size, fp);
+	if (G1_PKT_FILE_SIZE <= ftell(fp))
+		rewind(fp);
+	fclose(fp);
+	
+	return;
+}
+
 static long edge_dp_rcv(enum edge_access_type type, unsigned long module, unsigned char *pkt, unsigned long size)
 {
 	struct pkt_info info;
 	long lret;
 
 	/* record */
-
+	if (EDGE_FUNC_ON == get_pkt_record())
+		record_g1_pkt(type, module, pkt, size);
 
 	/* parse */
 	memset(&info, 0x00, sizeof(info));
